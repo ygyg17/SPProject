@@ -273,10 +273,10 @@
 
     Array.prototype.forEach.call(tableBody.querySelectorAll('tr[data-row]'), function (tr) {
       tr.addEventListener('click', function () {
-        const rowIndex = Number(tr.getAttribute('data-row'));
-        const item = state.items.find(function (i) { return i.rowIndex === rowIndex; });
-        if (item) openEdit(item);
-      });
+  const rowIndex = tr.getAttribute('data-row');   // hapus Number(...)
+  const item = state.items.find(function (i) { return String(i.rowIndex) === String(rowIndex); });
+  if (item) openEdit(item);
+});
     });
   }
 
