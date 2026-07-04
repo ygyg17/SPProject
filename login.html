@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <style>
+    body{font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f6f6f4;}
+    form{background:#fff;padding:32px;border-radius:12px;width:min(90vw,340px);box-shadow:0 4px 24px rgba(0,0,0,.06);}
+    input{width:100%;padding:10px;margin:6px 0 14px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;}
+    button{width:100%;padding:10px;border:none;border-radius:8px;background:#111;color:#fff;font-weight:600;cursor:pointer;}
+    #err{color:#c0392b;font-size:12px;margin-top:8px;display:none;}
+  </style>
+</head>
+<body>
+  <form id="loginForm">
+    <h2>Login</h2>
+    <label>Email</label>
+    <input type="email" id="email" required autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="password" required autocomplete="current-password">
+    <button type="submit" id="loginBtn">Masuk</button>
+    <div id="err"></div>
+  </form>
+
+  <script>
+    const _sb = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+    const params = new URLSearchParams(location.search);
+    const next = params.get('next') || 'index.html';
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errBox = document.getElementById('err');
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true; btn.textContent = 'Memproses...';
+      const { error } = await _sb.auth.signInWithPassword({ email, password });
+      btn.disabled = false; btn.textContent = 'Masuk';
+      if (error) {
+        errBox.textContent = error.message;
+        errBox.style.display = 'block';
+        return;
+      }
+      window.location.href = next;
+    });
+  </script>
+</body>
+</html>
