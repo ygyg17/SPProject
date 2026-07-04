@@ -1,0 +1,91 @@
+// auth.js — pengganti versi Apps Script/token custom, sekarang pakai Supabase Auth.
+// Load supabase-js dulu SEBELUM file ini, contoh di <head>:
+//   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+//   <script src="config.js"></script>
+//   <script src="auth.js"></script>
+
+const _sb = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+
+const SeminyakAuth = (function () {
+
+  async function getSession() {
+    const { data } = await _sb.auth.getSession();
+    return data.session; // null kalau belum login
+  }
+
+  async function requireRole(requiredRole) {
+    const session = await getSession();
+    if (!session) {
+      redirectToLogin();
+      return null;
+    }
+    const role = session.user.user_metadata?.role || 'user';
+    if (requiredRole && role !== requiredRole) {
+      alert('Kamu tidak punya akses ke halaman ini.');
+      window.location.href = 'index.html';
+      return null;
+    }
+    return session;
+  }
+
+  function redirectToLogin() {
+    const next = encodeURIComponent(window.location.pathname);
+    window.location.href = `${SUPABASE_CONFIG.LOGIN_PAGE}?next=${next}`;
+  }
+
+  // Pengganti fetch biasa: otomatis menyisipkan Authorization: Bearer <access_token>
+  // dan menangani sesi habis (authError) seperti versi lama.
+  async function authFetch(url, options = {}) {
+    const session = await getSession();
+    const headers = Object.assign({}, options.headers, {
+      'Content-Type': 'text/plain;charset=utf-8',
+    });
+    if (session) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+    const res = await fetch(url, Object.assign({}, options, { headers }));
+    const data = await res.json().catch(() => ({}));
+
+    if (data.authError || res.status === 401) {
+      await _sb.auth.signOut();
+      redirectToLogin();
+      throw new Error(data.message || 'Session expired, please login again');
+    }
+    if (!res.ok && data.success === false) {
+      throw new Error(data.message || 'Request failed');
+    }
+    return data;
+  }
+
+  async function signIn(email, password) {
+    const { data, error } = await _sb.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+  }
+
+  async function signOut() {
+    await _sb.auth.signOut();
+    window.location.href = SUPABASE_CONFIG.LOGIN_PAGE;
+  }
+
+  // Render kotak user kecil di topbar (id="authUserBox"), sama seperti versi lama.
+  async function renderUserBox() {
+    const box = document.getElementById('authUserBox');
+    if (!box) return;
+    const session = await getSession();
+    if (!session) { box.innerHTML = ''; return; }
+    const email = session.user.email || '';
+    box.innerHTML = `<span style="font-size:12px;margin-right:8px;">${email}</span>
+      <button type="button" id="logoutBtn" style="font-size:12px;">Logout</button>`;
+    document.getElementById('logoutBtn').addEventListener('click', signOut);
+  }
+
+  // Jalankan otomatis: cek role yang diwajibkan lewat data-require-role di <body>
+  // (persis seperti body[data-require-role="admin"] di HTML lama)
+  document.addEventListener('DOMContentLoaded', async () => {
+    const requiredRole = document.body.dataset.requireRole;
+    if (requiredRole) await requireRole(requiredRole);
+    renderUserBox();
+  });
+
+  return { getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
+})();
