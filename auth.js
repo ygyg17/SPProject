@@ -91,3 +91,8 @@ const SeminyakAuth = (function () {
 
   return { getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
 })();
+
+// PENTING: assign eksplisit ke window — `const` di top-level TIDAK otomatis
+// menempel ke window, padahal halaman lain (mis. administration.html) mengecek
+// `window.SeminyakAuth` secara langsung.
+window.SeminyakAuth = SeminyakAuth;
