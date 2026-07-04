@@ -23,11 +23,31 @@ const SeminyakAuth = (function () {
     // Dukung multi-role dipisah koma, contoh: data-require-role="admin,staff"
     const allowedRoles = String(requiredRoleAttr || '').split(',').map(r => r.trim()).filter(Boolean);
     if (allowedRoles.length && !allowedRoles.includes(role)) {
-      alert('Kamu tidak punya akses ke halaman ini.');
-      window.location.href = 'index.html';
+      showNoAccessAndGoBack();
       return null;
     }
     return session;
+  }
+
+  function showNoAccessAndGoBack() {
+    // Hentikan render halaman asli, ganti dengan pesan "Tidak ada akses"
+    document.title = 'Tidak ada akses';
+    document.body.innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
+        font-family:Inter,system-ui,sans-serif;background:#f6f6f4;text-align:center;padding:24px;">
+        <div>
+          <div style="font-size:40px;margin-bottom:12px;">🚫</div>
+          <h2 style="margin-bottom:8px;color:#1c1c1e;">Tidak ada akses</h2>
+          <p style="color:#6b6b72;font-size:14px;">Kamu tidak punya izin untuk membuka halaman ini.<br>Mengembalikan ke halaman sebelumnya...</p>
+        </div>
+      </div>`;
+    setTimeout(function () {
+      if (document.referrer && document.referrer !== window.location.href) {
+        window.history.back();
+      } else {
+        window.location.href = 'index.html';
+      }
+    }, 1800);
   }
 
   function redirectToLogin() {
