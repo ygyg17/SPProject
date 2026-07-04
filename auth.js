@@ -13,14 +13,16 @@ const SeminyakAuth = (function () {
     return data.session; // null kalau belum login
   }
 
-  async function requireRole(requiredRole) {
+  async function requireRole(requiredRoleAttr) {
     const session = await getSession();
     if (!session) {
       redirectToLogin();
       return null;
     }
     const role = session.user.user_metadata?.role || 'user';
-    if (requiredRole && role !== requiredRole) {
+    // Dukung multi-role dipisah koma, contoh: data-require-role="admin,staff"
+    const allowedRoles = String(requiredRoleAttr || '').split(',').map(r => r.trim()).filter(Boolean);
+    if (allowedRoles.length && !allowedRoles.includes(role)) {
       alert('Kamu tidak punya akses ke halaman ini.');
       window.location.href = 'index.html';
       return null;
