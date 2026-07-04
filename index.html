@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-active-page="task" data-require-role="admin">
+
+  <nav class="topbar">
+    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Buka menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img class="topbar-logo" src="https://cdn-5d8995b3f911c90950a6130b.closte.com/wp-content/uploads/2024/08/the-seminyak-logo-aug24v1.png" alt="The Seminyak">
+    <div class="topbar-div"></div>
+    <span class="topbar-title">Marketing Desk</span>
+    <div id="authUserBox"></div>
+    <div class="topbar-clock" id="mastClock">—</div>
+  </nav>
+
+  <div id="sidebar-container"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="body-wrap">
+    <div class="left-panel">
+      <div class="left-inner">
+        <div class="panel-eyebrow">Input Baru</div>
+        <h1 class="panel-heading">Reminder & Task,<br>Form</h1>
+        <p class="panel-sub">Catat task atau reminder notifikasi otomatis dikirim ke WhatsApp Group sesuai tanggal yang diset.</p>
+
+        <form id="mainForm">
+          <div class="type-row">
+            <input type="radio" id="typeTask" name="type" value="Task List" checked>
+            <label for="typeTask" class="type-label"><span class="t-dot"></span>Task List</label>
+            <input type="radio" id="typeRemind" name="type" value="Reminder">
+            <label for="typeRemind" class="type-label"><span class="t-dot"></span>Reminder</label>
+          </div>
+
+          <div class="divider">
+            <div class="divider-line"></div>
+            <span class="divider-label" id="divLabel">Detail Task</span>
+            <div class="divider-line"></div>
+          </div>
+
+          <div id="taskFields">
+            <div class="field">
+              <label for="taskName">Nama Task</label>
+              <input id="taskName" name="taskName" type="text" placeholder="Contoh: Follow up client Seminyak Beach" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="deadline">Deadline <span class="opt-tag">opsional</span></label>
+              <input id="deadline" name="deadline" type="date">
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                  <option value="">— pilih —</option>
+                  <option value="Not started">Not started</option>
+                  <option value="In progress">In progress</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="priority">Priority</label>
+                <select id="priority" name="priority">
+                  <option value="">— pilih —</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="note">Note <span class="opt-tag">opsional</span></label>
+              <textarea id="note" name="note" placeholder="Tambahkan detail jika perlu..."></textarea>
+            </div>
+          </div>
+
+          <div id="reminderFields" class="hidden">
+            <div class="field">
+              <label for="reminderName">Nama Reminder</label>
+              <input id="reminderName" name="reminderName" type="text" placeholder="Contoh: Kirim recap mingguan" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="remDate">Tanggal</label>
+              <input id="remDate" name="date" type="date">
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary" id="submitBtn">
+            <span id="btnLabel">Simpan</span>
+          </button>
+        </form>
+
+        <div class="footer-note">Y Chatbot · WA Auto-Notify</div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="board-header">
+        <div class="board-title-wrap">
+          <h2 id="boardMainTitle">Antrian Aktif</h2>
+          <div class="board-sub" id="boardSubTitle">Task &amp; reminder yang belum selesai</div>
+        </div>
+        <span class="count-badge" id="countLabel">memuat...</span>
+      </div>
+
+      <div class="filter-bar" id="filterBar">
+        <div class="chips" id="chipBar">
+          <div class="chip active" data-filter="Task List">Task</div>
+          <div class="chip" data-filter="Reminder">Reminder</div>
+        </div>
+        <div class="search-wrap" id="searchWrapBox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="searchInput" type="text" placeholder="Cari Task...">
+          <button type="button" class="search-clear" id="searchClear" aria-label="Hapus pencarian">&times;</button>
+        </div>
+      </div>
+
+      <div class="board-list-wrap" id="boardListWrap">
+        <div class="board">
+          <div id="list">
+            <div class="state-box">
+              <div class="state-spinner"></div>
+              <div class="state-label">Memuat data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="calendar-wrap" id="calendarWrap">
+        <div class="cal-nav">
+          <button type="button" class="cal-nav-btn" id="calPrev">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button type="button" class="cal-nav-btn" id="calNext">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <div class="cal-month-label"><span id="calMonthLabel">—</span></div>
+        </div>
+        <div class="cal-grid-wrap">
+          <div class="cal-dow">
+            <div class="cal-dow-cell">Sen</div><div class="cal-dow-cell">Sel</div><div class="cal-dow-cell">Rab</div>
+            <div class="cal-dow-cell">Kam</div><div class="cal-dow-cell">Jum</div><div class="cal-dow-cell">Sab</div><div class="cal-dow-cell">Min</div>
+          </div>
+          <div class="cal-days" id="calDays"></div>
+        </div>
+        <div class="agenda-wrap" id="agendaWrap"></div>
+        <div class="cal-detail" id="calDetail">
+          <div class="cal-detail-head">
+            <h4 id="calDetailTitle">—</h4>
+            <button type="button" class="cal-detail-close" id="calDetailClose">&times;</button>
+          </div>
+          <div class="cal-detail-list" id="calDetailList"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);">
+        Klik baris untuk edit
+      </div>
+    </div>
+  </div>
+
+  <a class="wa-float" href="https://wa.me/6281776452000" target="_blank" rel="noopener">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    WA Bot
+  </a>
+
+  <div id="toastOk" class="toast toast-ok"><span class="toast-icon">✓</span><span id="toastOkMsg">Berhasil disimpan</span></div>
+  <div id="toastErr" class="toast toast-err"><span class="toast-icon">✕</span><span id="toastErrMsg">Terjadi kesalahan</span></div>
+
+  <div id="editOverlay" class="overlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="editTitle">Edit Item</h3>
+        <button type="button" class="close-btn" id="editClose">&times;</button>
+      </div>
+      <form id="editForm">
+        <input type="hidden" id="editId">
+        <input type="hidden" id="editType">
+        <div id="editTaskFields">
+          <div class="field"><label>Nama Task</label><input id="editTaskName" type="text" autocomplete="off"></div>
+          <div class="field"><label>Deadline <span class="opt-tag">opsional</span></label><input id="editDeadline" type="date"></div>
+          <div class="field-row">
+            <div class="field">
+              <label>Status</label>
+              <select id="editStatus"><option value="Not started">Not started</option><option value="In progress">In progress</option><option value="Done">Done</option></select>
+            </div>
+            <div class="field">
+              <label>Priority</label>
+              <select id="editPriority"><option value="Low">Low</option><option value="Medium">Medium</option><option value="Urgent">Urgent</option></select>
+            </div>
+          </div>
+          <div class="field"><label>Note <span class="opt-tag">opsional</span></label><textarea id="editNote"></textarea></div>
+        </div>
+        <div id="editReminderFields" class="hidden">
+          <div class="field"><label>Nama Reminder</label><input id="editRemName" type="text" autocomplete="off"></div>
+          <div class="field"><label>Tanggal</label><input id="editRemDate" type="date"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="editCancel">Batal</button>
+          <button type="submit" class="btn-primary" id="editSubmitBtn"><span id="editBtnLabel">Simpan Perubahan</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = SUPABASE_CONFIG.TASKS_API_URL;
+
+    /* ─── Clock ─── */
+    function tickClock() {
+      const now = new Date();
+      const d = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+      const t = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('mastClock').innerHTML = d + '&nbsp;&nbsp;<b>' + t + '</b>';
+    }
+    tickClock(); setInterval(tickClock, 30000);
+
+    /* ─── Toast ─── */
+    function showToast(id, msgId, msg, dur) {
+      const el = document.getElementById(id);
+      document.getElementById(msgId).textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), dur || 3000);
+    }
+    function showOk(msg) { showToast('toastOk','toastOkMsg',msg,2800); }
+    function showErr(msg) { showToast('toastErr','toastErrMsg',msg,3500); }
+
+    function esc(s) { return !s ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+    }
+
+    /* ─── Type toggle ─── */
+    const taskFields = document.getElementById('taskFields');
+    const reminderFields = document.getElementById('reminderFields');
+    const divLabel = document.getElementById('divLabel');
+
+    function toggleType() {
+      const v = document.querySelector('input[name="type"]:checked').value;
+      const isTask = v === 'Task List';
+      taskFields.classList.toggle('hidden', !isTask);
+      reminderFields.classList.toggle('hidden', isTask);
+      divLabel.textContent = isTask ? 'Detail Task' : 'Detail Reminder';
+    }
+    document.querySelectorAll('input[name="type"]').forEach(r => r.addEventListener('change', toggleType));
+    toggleType();
+
+    function today() { return new Date().toISOString().split('T')[0]; }
+    document.getElementById('remDate').value = today();
+
+    /* ─── Submit Form ─── */
+    const mainForm = document.getElementById('mainForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnLabel = document.getElementById('btnLabel');
+
+    function setSubmitLoading(on) {
+      submitBtn.disabled = on;
+      btnLabel.innerHTML = on ? '<span class="spinner-sm"></span> Menyimpan...' : 'Simpan';
+    }
+
+    mainForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const type = document.querySelector('input[name="type"]:checked').value;
+      const data = { type };
+      if (type === 'Task List') {
+        data.taskName = document.getElementById('taskName').value;
+        data.deadline  = document.getElementById('deadline').value;
+        data.status    = document.getElementById('status').value;
+        data.priority  = document.getElementById('priority').value;
+        data.note      = document.getElementById('note').value;
+      } else {
+        data.reminderName = document.getElementById('reminderName').value;
+        data.date         = document.getElementById('remDate').value;
+      }
+      setSubmitLoading(true);
+      SeminyakAuth.authFetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(data) })
+        .then(res => {
+          setSubmitLoading(false);
+          if (res.success) {
+            showOk(res.message || 'Berhasil disimpan');
+            mainForm.reset();
+            document.getElementById('typeTask').checked = true;
+            document.getElementById('remDate').value = today();
+            toggleType(); loadItems();
+          } else showErr(res.message || 'Gagal menyimpan data');
+        })
+        .catch(err => { setSubmitLoading(false); showErr(err.message || String(err)); });
+    });
+
+    /* ─── Global State ─── */
+    let allItems = [], activeFilter = 'Task List';
+    const boardListWrap = document.getElementById('boardListWrap');
+    const calendarWrap  = document.getElementById('calendarWrap');
+    const searchWrapBox = document.getElementById('searchWrapBox');
+    const countLabel    = document.getElementById('countLabel');
+    const boardSub      = document.getElementById('boardSubTitle');
+
+    document.getElementById('chipBar').addEventListener('click', function(e) {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeFilter = chip.dataset.filter;
+      if (activeFilter === 'Reminder') switchToCal();
+      else { switchToList(); renderList(); }
+    });
+
+    function switchToList() {
+      boardListWrap.classList.remove('hide');
+      calendarWrap.classList.remove('show');
+      searchWrapBox.style.display = '';
+      boardSub.textContent = 'Task yang belum selesai';
+    }
+    function switchToCal() {
+      boardListWrap.classList.add('hide');
+      calendarWrap.classList.add('show');
+      searchWrapBox.style.display = 'none';
+      boardSub.textContent = 'Jadwal reminder tersimpan';
+      renderCalendar(); renderAgenda();
+    }
+
+    /* ─── Task & Reminder Render ─── */
+    const listEl = document.getElementById('list');
+
+    function priorityClass(p) { return {'Low':'pill-low','Medium':'pill-medium','Urgent':'pill-urgent'}[p]||''; }
+    function statusClass(s) { return s==='Not started'?'pill-not-started':s==='In progress'?'pill-in-progress':''; }
+
+    function renderRow(item) {
+      const isTask = item.type === 'Task List';
+      let pills = '';
+      if (item.deadline) pills += '<span class="pill pill-date">'+esc(fmtDate(item.deadline))+'</span>';
+      if (item.status)   pills += '<span class="pill '+statusClass(item.status)+'">'+esc(item.status)+'</span>';
+      if (item.priority) pills += '<span class="pill '+priorityClass(item.priority)+'">'+esc(item.priority)+'</span>';
+      let actions = '<div class="row-actions"><button type="button" class="btn-sm edit" data-edit-id="'+item.id+'">Edit</button>';
+      if (isTask && item.status !== 'Done') actions += '<button type="button" class="btn-sm done" data-done-id="'+item.id+'">Selesai</button>';
+      actions += '</div>';
+      return `<div class="task-row" data-type="${esc(item.type)}" id="row-${item.id}" data-row-id="${item.id}">
+        <div class="row-accent"></div>
+        <div class="row-inner">
+          <div class="row-top"><div class="row-type-dot"></div><div class="row-title">${esc(item.taskName||'(tanpa nama)')}</div></div>
+          ${pills?`<div class="row-pills">${pills}</div>`:''}
+          ${item.note?`<div class="row-note">${esc(item.note)}</div>`:''}
+          ${actions}
+        </div>
+      </div>`;
+    }
+
+    function renderList() {
+      const q = (document.getElementById('searchInput').value||'').toLowerCase().trim();
+      let filtered = allItems.filter(i => i.type===activeFilter);
+      if (q) filtered = filtered.filter(i => (i.taskName||'').toLowerCase().includes(q)||(i.note||'').toLowerCase().includes(q)||(i.status||'').toLowerCase().includes(q));
+      if (activeFilter==='Task List') filtered = filtered.sort((a,b)=>(a.priority==='Urgent'?0:1)-(b.priority==='Urgent'?0:1));
+      countLabel.textContent = filtered.length + ' item';
+      if (!filtered.length) { listEl.innerHTML=`<div class="state-box"><div class="state-icon">◌</div><div class="state-label">${q?'Tidak ada hasil':'Belum ada entri'}</div></div>`; return; }
+      listEl.innerHTML = filtered.map(renderRow).join('');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+      document.getElementById('searchClear').classList.toggle('visible', this.value.length>0);
+      renderList();
+    });
+    document.getElementById('searchClear').addEventListener('click', function() {
+      document.getElementById('searchInput').value=''; this.classList.remove('visible'); renderList();
+    });
+
+    listEl.addEventListener('click', function(e) {
+      const doneBtn = e.target.closest('[data-done-id]');
+      if (doneBtn) { e.stopPropagation(); markDone(doneBtn.dataset.doneId); return; }
+      const editBtn = e.target.closest('[data-edit-id]');
+      if (editBtn) { e.stopPropagation(); openEdit(editBtn.dataset.editId); return; }
+      const row = e.target.closest('.task-row');
+      if (row) openEdit(row.dataset.rowId);
+    });
+
+    function markDone(id) {
+      const row = document.getElementById('row-'+id);
+      if (row) row.style.opacity = '.45';
+      SeminyakAuth.authFetch(SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({action:'updateStatus',id,status:'Done'}) })
+        .then(res=>{
+          if (res.success) { showOk('Task selesai'); loadItems(); }
+          else { showErr('Gagal'); if (row) row.style.opacity='1'; }
+        }).catch(err=>{ showErr(err.message); if(row) row.style.opacity='1'; });
+    }
+
+    function loadItems() {
+      fetch(SCRIPT_URL+'?action=getReminders')
+        .then(r=>r.json())
+        .then(res=>{
+          if (res.success) {
+            allItems = res.data||[];
+            renderList();
+            if (activeFilter==='Reminder') { renderCalendar(); renderAgenda(); }
+          } else throw new Error(res.message);
+        })
+        .catch(()=>{ listEl.innerHTML=`<div class="state-box state-error"><div class="state-icon">!</div><div class="state-label">Gagal muat data</div></div>`; });
+    }
+
+    /* ─── Calendar ─── */
+    let calYear=new Date().getFullYear(), calMonth=new Date().getMonth(), calSelectedDate=null;
+    const MONTHS_ID=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const DOW_ID=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+    function isoDate(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+    function itemsOnDate(iso){return allItems.filter(i=>(i.deadline||'')===iso&&i.type==='Reminder');}
+
+    function renderCalendar() {
+      document.getElementById('calMonthLabel').innerHTML = MONTHS_ID[calMonth]+' <span>'+calYear+'</span>';
+      const todayIso=today(), firstDay=new Date(calYear,calMonth,1), lastDay=new Date(calYear,calMonth+1,0);
+      let startDow=firstDay.getDay()===0?6:firstDay.getDay()-1, html='';
+      const prevLast=new Date(calYear,calMonth,0).getDate();
+      for(let i=startDow-1;i>=0;i--) html+=renderCalCell(prevLast-i,isoDate(calYear,calMonth-1,prevLast-i),true,todayIso);
+      for(let d=1;d<=lastDay.getDate();d++) html+=renderCalCell(d,isoDate(calYear,calMonth,d),false,todayIso);
+      const total=startDow+lastDay.getDate(), rem=total%7===0?0:7-(total%7);
+      for(let d=1;d<=rem;d++) html+=renderCalCell(d,isoDate(calYear,calMonth+1,d),true,todayIso);
+      const calDaysEl=document.getElementById('calDays');
+      calDaysEl.innerHTML=html;
+      calDaysEl.querySelectorAll('.cal-cell').forEach(cell=>{
+        cell.addEventListener('click',function(){
+          calSelectedDate=this.dataset.date;
+          calDaysEl.querySelectorAll('.cal-cell').forEach(c=>c.classList.remove('selected'));
+          this.classList.add('selected'); showCalDetail(this.dataset.date);
+        });
+      });
+      if(calSelectedDate){const sel=calDaysEl.querySelector(`[data-date="${calSelectedDate}"]`);if(sel)sel.classList.add('selected');}
+    }
+
+    function renderCalCell(dayNum,iso,otherMonth,todayIso) {
+      const items=itemsOnDate(iso);
+      let cls='cal-cell'+(otherMonth?' other-month':'')+(iso===todayIso?' today':'')+(iso===calSelectedDate?' selected':'');
+      let ev=items.slice(0,2).map(i=>`<div class="cal-event type-reminder"><span class="cal-event-dot"></span>${esc((i.taskName||'').substring(0,18))}</div>`).join('');
+      if(items.length>2) ev+=`<div class="cal-event-more">+${items.length-2} lagi</div>`;
+      return `<div class="${cls}" data-date="${iso}"><div class="cal-day-num">${dayNum}</div><div class="cal-events">${ev}</div></div>`;
+    }
+
+    function showCalDetail(iso) {
+      const items=itemsOnDate(iso),dEl=document.getElementById('calDetail');
+      document.getElementById('calDetailTitle').textContent=new Date(iso+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+      const lEl=document.getElementById('calDetailList');
+      if(!items.length) lEl.innerHTML='<div class="state-box" style="padding:20px"><div class="state-label">Tidak ada reminder</div></div>';
+      else lEl.innerHTML=items.map(renderRow).join('');
+      dEl.classList.add('show');
+    }
+
+    document.getElementById('calDetailClose').addEventListener('click',()=>{document.getElementById('calDetail').classList.remove('show');calSelectedDate=null;document.querySelectorAll('.cal-cell').forEach(c=>c.classList.remove('selected'));});
+    document.getElementById('calPrev').addEventListener('click',()=>{calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();renderAgenda();document.getElementById('calDetail').classList.remove('show');});
+    document.getElementById('calNext').addEventListener('click',()=>{calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();renderAgenda();document.getElementById('calDetail').classList.remove('show');});
+
+    /* ─── Agenda ─── */
+    function renderAgenda() {
+      const agendaEl=document.getElementById('agendaWrap');
+      if(!agendaEl)return;
+      const monthPrefix=calYear+'-'+String(calMonth+1).padStart(2,'0');
+      const items=allItems.filter(i=>i.type==='Reminder'&&(i.deadline||'').startsWith(monthPrefix)).sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
+      if(!items.length){agendaEl.innerHTML=`<div class="agenda-empty">Belum ada reminder bulan ${MONTHS_ID[calMonth]}</div>`;return;}
+      const todayIso=today(),byDate={};
+      items.forEach(i=>{const d=i.deadline||'';if(!byDate[d])byDate[d]=[];byDate[d].push(i);});
+      agendaEl.innerHTML=Object.keys(byDate).sort().map(iso=>{
+        const d=new Date(iso+'T00:00:00'),dayNum=d.getDate(),dayName=DOW_ID[d.getDay()],isToday=iso===todayIso;
+        const itemsHtml=byDate[iso].map(i=>`<div class="agenda-item" data-row-id="${i.id}"><span class="agenda-dot"></span>${esc(i.taskName||'(tanpa nama)')}</div>`).join('');
+        return `<div class="agenda-row" data-date="${iso}"><div class="agenda-date${isToday?' is-today':''}"><div class="agenda-day-num">${dayNum}</div><div class="agenda-day-name">${dayName}</div></div><div class="agenda-items">${itemsHtml}</div></div>`;
+      }).join('');
+      agendaEl.querySelectorAll('.agenda-item').forEach(el=>el.addEventListener('click',function(e){e.stopPropagation();openEdit(this.dataset.rowId);}));
+      agendaEl.querySelectorAll('.agenda-row').forEach(el=>el.addEventListener('click',function(){showCalDetail(this.dataset.date);}));
+    }
+
+    /* ─── Edit Modal ─── */
+    const editOverlay=document.getElementById('editOverlay'), editForm=document.getElementById('editForm');
+    function openEdit(id) {
+      const item=allItems.find(i=>String(i.id)===String(id));if(!item)return;
+      document.getElementById('editId').value=item.id; document.getElementById('editType').value=item.type;
+      const isTask=item.type==='Task List';
+      document.getElementById('editTitle').textContent=isTask?'Edit Task':'Edit Reminder';
+      document.getElementById('editTaskFields').classList.toggle('hidden',!isTask);
+      document.getElementById('editReminderFields').classList.toggle('hidden',isTask);
+      if(isTask){
+        document.getElementById('editTaskName').value=item.taskName||''; document.getElementById('editDeadline').value=item.deadline||'';
+        document.getElementById('editStatus').value=item.status||'Not started'; document.getElementById('editPriority').value=item.priority||'Low';
+        document.getElementById('editNote').value=item.note||'';
+      } else {
+        document.getElementById('editRemName').value=item.taskName||''; document.getElementById('editRemDate').value=item.deadline||'';
+      }
+      editOverlay.classList.add('show');
+    }
+    function closeEdit(){editOverlay.classList.remove('show');}
+    document.getElementById('editClose').addEventListener('click',closeEdit);
+    document.getElementById('editCancel').addEventListener('click',closeEdit);
+
+    editForm.addEventListener('submit',function(e){
+      e.preventDefault();
+      const id=document.getElementById('editId').value, type=document.getElementById('editType').value, isTask=type==='Task List';
+      const btn=document.getElementById('editSubmitBtn'), lbl=document.getElementById('editBtnLabel');
+      btn.disabled=true; lbl.innerHTML='<span class="spinner-sm"></span> Menyimpan...';
+      const payload={action:'updateItem',id,type};
+      if(isTask){payload.taskName=document.getElementById('editTaskName').value;payload.deadline=document.getElementById('editDeadline').value;payload.status=document.getElementById('editStatus').value;payload.priority=document.getElementById('editPriority').value;payload.note=document.getElementById('editNote').value;}
+      else{payload.reminderName=document.getElementById('editRemName').value;payload.date=document.getElementById('editRemDate').value;}
+      SeminyakAuth.authFetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)}).then(res=>{
+        btn.disabled=false; lbl.textContent='Simpan Perubahan';
+        if(res.success){closeEdit();showOk('Perubahan tersimpan');loadItems();}else showErr('Gagal menyimpan');
+      });
+    });
+
+    loadItems();
+  </script>
+
+  <script src="sidebar-loader.js"></script>
+</body>
+</html>
