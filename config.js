@@ -14,3 +14,4 @@ const SUPABASE_CONFIG = {
 const CONFIG = {
   ADMIN_GAS_WEB_APP_URL: 'https://guobvhghlrlgcqbfgzdn.supabase.co/functions/v1/administration-api'
 };
+ 
