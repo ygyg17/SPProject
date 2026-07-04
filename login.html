@@ -1,49 +1,97 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Login</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js"></script>
-  <style>
-    body{font-family:Inter,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f6f6f4;}
-    form{background:#fff;padding:32px;border-radius:12px;width:min(90vw,340px);box-shadow:0 4px 24px rgba(0,0,0,.06);}
-    input{width:100%;padding:10px;margin:6px 0 14px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;}
-    button{width:100%;padding:10px;border:none;border-radius:8px;background:#111;color:#fff;font-weight:600;cursor:pointer;}
-    #err{color:#c0392b;font-size:12px;margin-top:8px;display:none;}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — The Seminyak Marketing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
 </head>
-<body>
-  <form id="loginForm">
-    <h2>Login</h2>
-    <label>Email</label>
-    <input type="email" id="email" required autocomplete="username">
-    <label>Password</label>
-    <input type="password" id="password" required autocomplete="current-password">
-    <button type="submit" id="loginBtn">Masuk</button>
-    <div id="err"></div>
-  </form>
+<body class="login-body">
+
+  <div class="login-card">
+    <img class="login-logo" src="https://cdn-5d8995b3f911c90950a6130b.closte.com/wp-content/uploads/2024/08/the-seminyak-logo-aug24v1.png" alt="The Seminyak">
+    <div class="login-title">Masuk ke Akun</div>
+    <div class="login-sub">Marketing Tools — The Seminyak</div>
+
+    <div class="login-error" id="err"></div>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="text" id="email" placeholder="nama@thesemiyak.com" required autocomplete="username">
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrapper">
+          <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+          <button type="button" class="toggle-password" id="togglePassword" aria-label="Tampilkan password">
+            <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" id="loginBtn">
+        <span id="loginBtnLabel">Masuk</span>
+      </button>
+    </form>
+
+    <div class="footer-note">The Seminyak Marketing Tools</div>
+  </div>
 
   <script>
     const _sb = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
     const params = new URLSearchParams(location.search);
     const next = params.get('next') || 'index.html';
 
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    // Toggle show/hide password
+    const pwInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('togglePassword');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const eyeOpen = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    const eyeClosed = `<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.62 21.62 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.6 21.6 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+    toggleBtn.addEventListener('click', () => {
+      const showing = pwInput.type === 'text';
+      pwInput.type = showing ? 'password' : 'text';
+      eyeIcon.innerHTML = showing ? eyeOpen : eyeClosed;
+    });
+
+    // Submit login
+    const form = document.getElementById('loginForm');
+    const errBox = document.getElementById('err');
+    const btn = document.getElementById('loginBtn');
+    const btnLabel = document.getElementById('loginBtnLabel');
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const errBox = document.getElementById('err');
-      const btn = document.getElementById('loginBtn');
-      btn.disabled = true; btn.textContent = 'Memproses...';
+      errBox.classList.remove('show');
+
+      const email = document.getElementById('email').value.trim();
+      const password = pwInput.value;
+
+      btn.disabled = true;
+      btnLabel.innerHTML = '<span class="spinner-sm"></span> Memproses...';
+
       const { error } = await _sb.auth.signInWithPassword({ email, password });
-      btn.disabled = false; btn.textContent = 'Masuk';
+
+      btn.disabled = false;
+      btnLabel.textContent = 'Masuk';
+
       if (error) {
-        errBox.textContent = error.message;
-        errBox.style.display = 'block';
+        errBox.textContent = error.message === 'Invalid login credentials'
+          ? 'Email atau password salah.'
+          : error.message;
+        errBox.classList.add('show');
         return;
       }
+
       window.location.href = next;
     });
   </script>
