@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proposal Status — The Seminyak Marketing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<style>
+  .body-wrap.single { display: block; }
+  .right-panel { padding: 32px 28px 60px; }
+
+  .board-header .header-actions { display: flex; align-items: center; gap: 10px; }
+  .btn-add {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 16px; background: var(--gold); color: #fff; border: none;
+    border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background .15s; white-space: nowrap;
+  }
+  .btn-add:hover { background: var(--gold-hover); }
+
+  .filter-bar { 
+    display: flex; 
+    flex-direction: row; 
+    flex-wrap: wrap; 
+    align-items: center; 
+    justify-content: flex-start;
+    gap: 12px; 
+    margin-bottom: 20px; 
+  }
+  
+  .filter-bar .search-wrap { 
+    flex: 0 0 240px;
+    max-width: 240px;
+  }
+  
+  .sort-select {
+    flex: 0 0 auto;
+    width: max-content;
+    min-width: 140px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 7px 30px 7px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2378716c' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .sort-select:focus { outline: none; border-color: var(--gold); }
+
+  .req-file-link {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gold);
+    text-decoration: none;
+    margin-right: 8px;
+  }
+  .req-file-link:hover { text-decoration: underline; }
+  .no-files { color: var(--muted); font-size: 12px; }
+
+  .list-end-note {
+    text-align: center; padding: 18px 0 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  }
+
+  .edit-field { display: flex; flex-direction: column; gap: 6px; }
+  .edit-field label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .edit-field input, .edit-field select, .edit-field textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; font-size: 13px; font-family: 'Inter', sans-serif; font-weight: 500; color: var(--ink);
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .edit-field input:focus, .edit-field select:focus, .edit-field textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); background: var(--surface); }
+  .edit-field textarea { min-height: 56px; resize: vertical; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; line-height: 1.5; }
+  .edit-field .hint { font-size: 10.5px; color: var(--muted); }
+  .edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .edit-grid .full { grid-column: 1 / -1; }
+  @media (max-width: 520px) { .edit-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body data-active-page="proposal" data-require-role="admin,staff">
+
+  <nav class="topbar">
+    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Buka menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img class="topbar-logo" src="https://cdn-5d8995b3f911c90950a6130b.closte.com/wp-content/uploads/2024/08/the-seminyak-logo-aug24v1.png" alt="The Seminyak">
+    <div class="topbar-div"></div>
+    <span class="topbar-title">Proposal Marketing</span>
+    <div id="authUserBox"></div>
+    <div class="topbar-clock" id="mastClock">—</div>
+  </nav>
+
+  <div id="sidebar-container"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="body-wrap single">
+    <div class="right-panel">
+
+      <div class="board-header">
+        <div class="board-title-wrap">
+          <h2>Proposal Status</h2>
+          <div class="board-sub">Data live dari Supabase — status proposal, purchase request, vendor form, hingga payment.</div>
+        </div>
+        <div class="header-actions">
+          <span class="count-badge" id="countBadge">0 proposal</span>
+          <button class="btn-add" id="btnAddNew">+ Proposal Baru</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35" stroke-linecap="round"/></svg>
+          <input type="text" id="searchInput" placeholder="Cari nama proposal...">
+          <button class="search-clear" id="searchClear">✕</button>
+        </div>
+        
+        <select class="sort-select" id="sortSelect">
+          <option value="propose-desc" selected>Date Propose Terbaru</option>
+          <option value="propose-asc">Date Propose Terlama</option>
+          <option value="approved-desc">Date Approved Terbaru</option>
+          <option value="name-asc">Nama A–Z</option>
+          <option value="name-desc">Nama Z–A</option>
+        </select>
+        
+        <select class="sort-select" id="yearSelect">
+          <option value="All">Semua Tahun</option>
+        </select>
+      </div>
+
+      <div class="board">
+        <div class="table-wrapper">
+          <table class="req-table" id="reqTable">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Date Propose</th>
+                <th>Date Approved</th>
+                <th>Proposal Status</th>
+                <th>Purchase Request</th>
+                <th>Vendor Form</th>
+                <th>Payment</th>
+                <th>Files</th>
+              </tr>
+            </thead>
+            <tbody id="reqTableBody">
+              <tr><td colspan="8"><div class="state-box"><div class="state-spinner"></div><div class="state-label">Memuat data...</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="list-end-note" id="listEndNote"></div>
+
+    </div>
+  </div>
+
+  <!-- Edit / Create modal -->
+  <div class="overlay" id="detailOverlay">
+    <div class="modal-card" style="width:min(92vw, 560px);">
+      <div class="modal-head">
+        <h3 id="detailTitle">Detail Proposal</h3>
+        <button class="close-btn" id="detailClose">✕</button>
+      </div>
+
+      <div class="edit-grid">
+        <div class="edit-field full">
+          <label>Name</label>
+          <input type="text" id="f_Name" placeholder="Nama proposal">
+        </div>
+        <div class="edit-field">
+          <label>Date Propose</label>
+          <input type="date" id="f_DatePropose">
+        </div>
+        <div class="edit-field">
+          <label>Date Approved</label>
+          <input type="date" id="f_DateApproved">
+        </div>
+        <div class="edit-field">
+          <label>Proposal Status</label>
+          <select id="f_ProposalStatus">
+            <option value="Not started">Not started</option>
+            <option value="not approved">not approved</option>
+            <option value="Mbak Eka">Mbak Eka</option>
+            <option value="In progress">In progress</option>
+            <option value="Cancel">Cancel</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label>Purchase Request</label>
+          <select id="f_PurchaseRequest">
+            <option value="">—</option>
+            <option value="Not started">Not started</option>
+            <option value="In progress">In progress</option>
+            <option value="Done GM">Done GM</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label>Vendor Form</label>
+          <select id="f_VendorForm">
+            <option value="">—</option>
+            <option value="Not required">Not required</option>
+            <option value="Not started">Not started</option>
+            <option value="In progress">In progress</option>
+            <option value="Done Purchasing">Done Purchasing</option>
+          </select>
+        </div>
+        <div class="edit-field">
+          <label>Payment</label>
+          <select id="f_Payment">
+            <option value="">—</option>
+            <option value="Not started">Not started</option>
+            <option value="In progress">In progress</option>
+            <option value="Deposit">Deposit</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+        <div class="edit-field full">
+          <label>Files (link, 1 per baris)</label>
+          <textarea id="f_Files" placeholder="https://drive.google.com/..."></textarea>
+        </div>
+        <div class="edit-field full">
+          <label>Invoice (link, 1 per baris)</label>
+          <textarea id="f_Invoice" placeholder="https://drive.google.com/..."></textarea>
+        </div>
+        <div class="edit-field full">
+          <label>Note</label>
+          <textarea id="f_Note" placeholder="Catatan tambahan..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" id="detailCancel">Batal</button>
+        <button class="btn-primary" id="detailSave" style="margin-top:0;">
+          <span id="saveBtnLabel">Simpan</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <span class="toast-icon" id="toastIcon">✓</span>
+    <span id="toastMsg"></span>
+  </div>
+
+  <script>
+    const sbProposal = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+
+    let allItems = [];
+    let filteredItems = [];
+    let activeYear = '2026';
+    let searchTerm = '';
+    let sortMode = 'propose-desc';
+    let modalMode = 'edit';
+    let editingId = null;
+
+    function tickClock() {
+      const el = document.getElementById('mastClock');
+      const now = new Date();
+      const d = now.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+      const t = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      el.innerHTML = `${d}<br><b>${t}</b>`;
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    function normalizeItem(raw) {
+      return {
+        id: raw.id,
+        Name: raw.name || '(Tanpa Nama)',
+        DatePropose: raw.date_propose || '',
+        DateApproved: raw.date_approved || '',
+        ProposalStatus: raw.proposal_status || 'Not started',
+        PurchaseRequest: raw.purchase_request || '',
+        VendorForm: raw.vendor_form || '',
+        Payment: raw.payment || '',
+        Files: raw.files || [],
+        Invoice: raw.invoice || [],
+        Note: raw.note || ''
+      };
+    }
+
+    function toDbFields(fields) {
+      return {
+        name: fields.Name,
+        date_propose: fields.DatePropose || null,
+        date_approved: fields.DateApproved || null,
+        proposal_status: fields.ProposalStatus,
+        purchase_request: fields.PurchaseRequest || null,
+        vendor_form: fields.VendorForm || null,
+        payment: fields.Payment || null,
+        files: fields.Files || [],
+        invoice: fields.Invoice || [],
+        note: fields.Note || null
+      };
+    }
+
+    async function fetchProposals() {
+      try {
+        const { data, error } = await sbProposal
+          .from('proposals')
+          .select('*')
+          .order('date_propose', { ascending: false });
+
+        if (error) throw error;
+
+        allItems = (data || []).map(normalizeItem);
+        buildYearSelect();
+        applyFilters();
+      } catch (err) {
+        console.error(err);
+        document.getElementById('reqTableBody').innerHTML =
+          `<tr><td colspan="8"><div class="state-box state-error"><div class="state-icon">⚠</div><div class="state-label">Gagal memuat data: ${escapeHtml(err.message)}</div></div></td></tr>`;
+      }
+    }
+
+    function buildYearSelect() {
+      const years = new Set();
+      years.add('2026');
+
+      allItems.forEach(i => {
+        if (i.DatePropose) {
+          const y = new Date(i.DatePropose).getFullYear();
+          if (!isNaN(y)) years.add(y.toString());
+        }
+      });
+
+      const sortedYears = Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
+      const select = document.getElementById('yearSelect');
+
+      select.innerHTML = '<option value="All">Semua Tahun</option>' +
+        sortedYears.map(y => `<option value="${y}" ${activeYear === y ? 'selected' : ''}>${y}</option>`).join('');
+    }
+
+    function applyFilters() {
+      filteredItems = allItems.filter(i => {
+        const matchSearch = !searchTerm || i.Name.toLowerCase().includes(searchTerm.toLowerCase());
+
+        let matchYear = true;
+        if (activeYear !== 'All') {
+          const y = i.DatePropose ? new Date(i.DatePropose).getFullYear().toString() : '';
+          matchYear = (y === activeYear);
+        }
+
+        return matchSearch && matchYear;
+      });
+
+      filteredItems.sort((a, b) => {
+        switch (sortMode) {
+          case 'name-asc': return a.Name.localeCompare(b.Name);
+          case 'name-desc': return b.Name.localeCompare(a.Name);
+          case 'propose-asc': return new Date(a.DatePropose || 0) - new Date(b.DatePropose || 0);
+          case 'propose-desc': return new Date(b.DatePropose || 0) - new Date(a.DatePropose || 0);
+          case 'approved-desc': return new Date(b.DateApproved || 0) - new Date(a.DateApproved || 0);
+          default: return 0;
+        }
+      });
+
+      document.getElementById('countBadge').textContent = `${filteredItems.length} proposal`;
+      renderTable();
+    }
+
+    function statusPillClass(status) {
+      const s = (status || '').toLowerCase().trim();
+      if (s === 'cancel' || s === 'not approved') return 'pill-urgent';
+      if (s.startsWith('done')) return 'pill-low';
+      if (s === 'deposit') return 'pill-medium';
+      if (s === 'in progress') return 'pill-in-progress';
+      if (s === 'not started' || s === 'not required') return 'pill-not-started';
+      return 'pill-not-started'; 
+    }
+
+    function fmtDate(d) {
+      if (!d) return '—';
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return d;
+      return dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('reqTableBody');
+      const endNote = document.getElementById('listEndNote');
+
+      if (filteredItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="state-box"><div class="state-icon">📭</div><div class="state-label">Tidak ada proposal</div></div></td></tr>`;
+        endNote.textContent = '';
+        return;
+      }
+
+      tbody.innerHTML = filteredItems.map(item => {
+        const fileCount = (item.Files || []).length + (item.Invoice || []).length;
+        return `
+        <tr data-id="${escapeHtml(item.id)}">
+          <td data-label="Name"><strong>${escapeHtml(item.Name)}</strong></td>
+          <td data-label="Date Propose">${fmtDate(item.DatePropose)}</td>
+          <td data-label="Date Approved">${fmtDate(item.DateApproved)}</td>
+          <td data-label="Proposal Status"><span class="pill ${statusPillClass(item.ProposalStatus)}">${escapeHtml(item.ProposalStatus)}</span></td>
+          <td data-label="Purchase Request">${item.PurchaseRequest ? `<span class="pill ${statusPillClass(item.PurchaseRequest)}">${escapeHtml(item.PurchaseRequest)}</span>` : '—'}</td>
+          <td data-label="Vendor Form">${item.VendorForm ? `<span class="pill ${statusPillClass(item.VendorForm)}">${escapeHtml(item.VendorForm)}</span>` : '—'}</td>
+          <td data-label="Payment">${item.Payment ? `<span class="pill ${statusPillClass(item.Payment)}">${escapeHtml(item.Payment)}</span>` : '—'}</td>
+          <td data-label="Files">${fileCount > 0 ? `<span class="pill pill-date">${fileCount} file</span>` : '<span class="no-files">—</span>'}</td>
+        </tr>`;
+      }).join('');
+
+      endNote.textContent = `— ${filteredItems.length} proposal ditampilkan —`;
+
+      tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => openEditModal(row.getAttribute('data-id')));
+      });
+    }
+
+    function fillForm(item) {
+      document.getElementById('f_Name').value = item.Name || '';
+      document.getElementById('f_DatePropose').value = (item.DatePropose || '').slice(0, 10);
+      document.getElementById('f_DateApproved').value = (item.DateApproved || '').slice(0, 10);
+      document.getElementById('f_ProposalStatus').value = item.ProposalStatus || 'Not started';
+      document.getElementById('f_PurchaseRequest').value = item.PurchaseRequest || '';
+      document.getElementById('f_VendorForm').value = item.VendorForm || '';
+      document.getElementById('f_Payment').value = item.Payment || '';
+      document.getElementById('f_Files').value = (item.Files || []).join('\n');
+      document.getElementById('f_Invoice').value = (item.Invoice || []).join('\n');
+      document.getElementById('f_Note').value = item.Note || '';
+    }
+
+    function readForm() {
+      return {
+        Name: document.getElementById('f_Name').value.trim(),
+        DatePropose: document.getElementById('f_DatePropose').value || '',
+        DateApproved: document.getElementById('f_DateApproved').value || '',
+        ProposalStatus: document.getElementById('f_ProposalStatus').value,
+        PurchaseRequest: document.getElementById('f_PurchaseRequest').value,
+        VendorForm: document.getElementById('f_VendorForm').value,
+        Payment: document.getElementById('f_Payment').value,
+        Files: document.getElementById('f_Files').value.split('\n').map(s => s.trim()).filter(Boolean),
+        Invoice: document.getElementById('f_Invoice').value.split('\n').map(s => s.trim()).filter(Boolean),
+        Note: document.getElementById('f_Note').value.trim()
+      };
+    }
+
+    function openEditModal(id) {
+      const item = allItems.find(i => i.id === id);
+      if (!item) return;
+      modalMode = 'edit';
+      editingId = id;
+      document.getElementById('detailTitle').textContent = 'Edit Proposal';
+      document.getElementById('saveBtnLabel').textContent = 'Simpan Perubahan';
+      fillForm(item);
+      document.getElementById('detailOverlay').classList.add('show');
+    }
+
+    function openCreateModal() {
+      modalMode = 'create';
+      editingId = null;
+      document.getElementById('detailTitle').textContent = 'Proposal Baru';
+      document.getElementById('saveBtnLabel').textContent = 'Buat Proposal';
+      fillForm({});
+      document.getElementById('detailOverlay').classList.add('show');
+    }
+
+    function closeDetail() {
+      document.getElementById('detailOverlay').classList.remove('show');
+      editingId = null;
+    }
+    document.getElementById('btnAddNew').addEventListener('click', openCreateModal);
+    document.getElementById('detailClose').addEventListener('click', closeDetail);
+    document.getElementById('detailCancel').addEventListener('click', closeDetail);
+    document.getElementById('detailOverlay').addEventListener('click', (e) => { if (e.target.id === 'detailOverlay') closeDetail(); });
+
+    document.getElementById('detailSave').addEventListener('click', async () => {
+      const fields = readForm();
+      if (!fields.Name) { showToast('Nama proposal wajib diisi', 'err'); return; }
+
+      const saveBtn = document.getElementById('detailSave');
+      const label = document.getElementById('saveBtnLabel');
+      saveBtn.disabled = true;
+      label.textContent = 'Menyimpan...';
+
+      try {
+        const dbFields = toDbFields(fields);
+
+        if (modalMode === 'create') {
+          const { data, error } = await sbProposal.from('proposals').insert(dbFields).select().single();
+          if (error) throw error;
+          allItems.push(normalizeItem(data));
+          showToast('Proposal baru berhasil dibuat', 'ok');
+        } else {
+          const { data, error } = await sbProposal.from('proposals').update(dbFields).eq('id', editingId).select().single();
+          if (error) throw error;
+          const idx = allItems.findIndex(i => i.id === editingId);
+          if (idx > -1) allItems[idx] = normalizeItem(data);
+          showToast('Perubahan berhasil disimpan', 'ok');
+        }
+
+        buildYearSelect();
+        applyFilters();
+        closeDetail();
+      } catch (err) {
+        console.error(err);
+        showToast('Gagal menyimpan: ' + err.message, 'err');
+      } finally {
+        saveBtn.disabled = false;
+        label.textContent = modalMode === 'create' ? 'Buat Proposal' : 'Simpan Perubahan';
+      }
+    });
+
+    const searchInput = document.getElementById('searchInput');
+    const searchClear = document.getElementById('searchClear');
+    let searchTimer = null;
+    searchInput.addEventListener('input', () => {
+      searchClear.classList.toggle('visible', !!searchInput.value);
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        searchTerm = searchInput.value.trim();
+        applyFilters();
+      }, 250);
+    });
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      searchTerm = '';
+      searchClear.classList.remove('visible');
+      applyFilters();
+    });
+
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
+      sortMode = e.target.value;
+      applyFilters();
+    });
+
+    document.getElementById('yearSelect').addEventListener('change', (e) => {
+      activeYear = e.target.value;
+      applyFilters();
+    });
+
+    let toastTimer = null;
+    function showToast(msg, type) {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toastIcon');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.className = 'toast show ' + (type === 'err' ? 'toast-err' : 'toast-ok');
+      icon.textContent = type === 'err' ? '✕' : '✓';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    fetchProposals();
+  </script>
+
+  <script src="sidebar-loader.js"></script>
+</body>
+</html>
