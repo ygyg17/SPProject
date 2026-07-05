@@ -5,10 +5,8 @@ const SUPABASE_CONFIG = {
   DESIGN_API_URL: 'https://guobvhghlrlgcqbfgzdn.supabase.co/functions/v1/design-request-api',
   LOGIN_PAGE: 'login.html'
 };
-
 window.SUPABASE_CONFIG = SUPABASE_CONFIG;
 
 const CONFIG = {
   ADMIN_GAS_WEB_APP_URL: 'https://guobvhghlrlgcqbfgzdn.supabase.co/functions/v1/administration-api'
 };
- 
