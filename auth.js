@@ -20,7 +20,6 @@ const SeminyakAuth = (function () {
       return null;
     }
     const role = String(
-      session.user.user_metadata?.role ||
       session.user.app_metadata?.role ||
       'user'
     ).trim().toLowerCase();
