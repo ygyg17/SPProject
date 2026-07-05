@@ -19,9 +19,13 @@ const SeminyakAuth = (function () {
       redirectToLogin();
       return null;
     }
-    const role = session.user.user_metadata?.role || 'user';
+    const role = String(
+      session.user.user_metadata?.role ||
+      session.user.app_metadata?.role ||
+      'user'
+    ).trim().toLowerCase();
     // Dukung multi-role dipisah koma, contoh: data-require-role="admin,staff"
-    const allowedRoles = String(requiredRoleAttr || '').split(',').map(r => r.trim()).filter(Boolean);
+    const allowedRoles = String(requiredRoleAttr || '').split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
     if (allowedRoles.length && !allowedRoles.includes(role)) {
       showNoAccessAndGoBack();
       return null;
@@ -72,6 +76,10 @@ const SeminyakAuth = (function () {
       redirectToLogin();
       throw new Error(data.message || 'Session expired, please login again');
     }
+    if (data.forbidden || res.status === 403) {
+      showNoAccessAndGoBack();
+      throw new Error(data.error || data.message || 'Forbidden');
+    }
     if (!res.ok && data.success === false) {
       throw new Error(data.message || 'Request failed');
     }
@@ -105,8 +113,12 @@ const SeminyakAuth = (function () {
   // (persis seperti body[data-require-role="admin"] di HTML lama)
   document.addEventListener('DOMContentLoaded', async () => {
     const requiredRole = document.body.dataset.requireRole;
-    if (requiredRole) await requireRole(requiredRole);
-    renderUserBox();
+    const session = requiredRole ? await requireRole(requiredRole) : await getSession();
+    if (requiredRole && !session) return;
+    await renderUserBox();
+    if (typeof window.onAuthReady === 'function') {
+      window.onAuthReady(session);
+    }
   });
 
   return { getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
