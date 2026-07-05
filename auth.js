@@ -30,7 +30,6 @@ const SeminyakAuth = (function () {
   }
 
   function showNoAccessAndGoBack() {
-    // Hentikan render halaman asli, ganti dengan pesan "Tidak ada akses"
     document.title = 'Tidak ada akses';
     document.body.innerHTML = `
       <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
@@ -55,8 +54,6 @@ const SeminyakAuth = (function () {
     window.location.href = `${SUPABASE_CONFIG.LOGIN_PAGE}?next=${next}`;
   }
 
-  // Pengganti fetch biasa: otomatis menyisipkan Authorization: Bearer <access_token>
-  // dan menangani sesi habis (authError) seperti versi lama.
   async function authFetch(url, options = {}) {
     const session = await getSession();
     const headers = Object.assign({}, options.headers, {
@@ -71,6 +68,10 @@ const SeminyakAuth = (function () {
       await _sb.auth.signOut();
       redirectToLogin();
       throw new Error(data.message || 'Session expired, please login again');
+    }
+    
+    if (data.forbidden || res.status === 403) {
+      throw new Error(data.error || data.message || 'You do not have permission');
     }
     if (!res.ok && data.success === false) {
       throw new Error(data.message || 'Request failed');
@@ -89,7 +90,6 @@ const SeminyakAuth = (function () {
     window.location.href = SUPABASE_CONFIG.LOGIN_PAGE;
   }
 
-  // Render kotak user kecil di topbar (id="authUserBox"), sama seperti versi lama.
   async function renderUserBox() {
     const box = document.getElementById('authUserBox');
     if (!box) return;
@@ -101,18 +101,22 @@ const SeminyakAuth = (function () {
     document.getElementById('logoutBtn').addEventListener('click', signOut);
   }
 
-  // Jalankan otomatis: cek role yang diwajibkan lewat data-require-role di <body>
-  // (persis seperti body[data-require-role="admin"] di HTML lama)
   document.addEventListener('DOMContentLoaded', async () => {
     const requiredRole = document.body.dataset.requireRole;
-    if (requiredRole) await requireRole(requiredRole);
+    let session;
+    if (requiredRole) {
+      session = await requireRole(requiredRole);
+      if (!session) return; /
+    } else {
+      session = await getSession();
+    }
     renderUserBox();
+    if (typeof window.onAuthReady === 'function') {
+      window.onAuthReady(session);
+    }
   });
 
   return { getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
 })();
 
-// PENTING: assign eksplisit ke window — `const` di top-level TIDAK otomatis
-// menempel ke window, padahal halaman lain (mis. administration.html) mengecek
-// `window.SeminyakAuth` secara langsung.
 window.SeminyakAuth = SeminyakAuth;
