@@ -30,6 +30,7 @@ const SeminyakAuth = (function () {
   }
 
   function showNoAccessAndGoBack() {
+    // Hentikan render halaman asli, ganti dengan pesan "Tidak ada akses"
     document.title = 'Tidak ada akses';
     document.body.innerHTML = `
       <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
@@ -54,6 +55,8 @@ const SeminyakAuth = (function () {
     window.location.href = `${SUPABASE_CONFIG.LOGIN_PAGE}?next=${next}`;
   }
 
+  // Pengganti fetch biasa: otomatis menyisipkan Authorization: Bearer <access_token>
+  // dan menangani sesi habis (authError) seperti versi lama.
   async function authFetch(url, options = {}) {
     const session = await getSession();
     const headers = Object.assign({}, options.headers, {
@@ -64,12 +67,16 @@ const SeminyakAuth = (function () {
     const res = await fetch(url, Object.assign({}, options, { headers }));
     const data = await res.json().catch(() => ({}));
 
+    // Sesi benar-benar invalid/habis -> sign out & balik ke login (perilaku lama).
     if (data.authError || res.status === 401) {
       await _sb.auth.signOut();
       redirectToLogin();
       throw new Error(data.message || 'Session expired, please login again');
     }
-    
+    // Sesi valid, tapi role tidak diizinkan untuk endpoint ini -> JANGAN sign out
+    // atau redirect ke login (user tidak salah login, cuma tidak punya akses ke aksi ini).
+    // Ini penting: request seperti ini bisa saja terkirim duluan (race) sebelum
+    // requireRole() di halaman sempat menampilkan layar "Tidak ada akses".
     if (data.forbidden || res.status === 403) {
       throw new Error(data.error || data.message || 'You do not have permission');
     }
@@ -90,6 +97,7 @@ const SeminyakAuth = (function () {
     window.location.href = SUPABASE_CONFIG.LOGIN_PAGE;
   }
 
+  // Render kotak user kecil di topbar (id="authUserBox"), sama seperti versi lama.
   async function renderUserBox() {
     const box = document.getElementById('authUserBox');
     if (!box) return;
@@ -101,12 +109,22 @@ const SeminyakAuth = (function () {
     document.getElementById('logoutBtn').addEventListener('click', signOut);
   }
 
+  // Jalankan otomatis: cek role yang diwajibkan lewat data-require-role di <body>
+  // (persis seperti body[data-require-role="admin"] di HTML lama).
+  //
+  // PENTING: kalau halaman punya kode inisialisasi yang perlu authFetch() ke
+  // endpoint yang juga dibatasi role (mis. loadDesignRequests()), JANGAN panggil
+  // langsung di bagian bawah <script> — itu jalan sebelum DOMContentLoaded, jadi
+  // bisa balapan dengan pengecekan role di sini dan malah kena redirect login
+  // duluan (lihat fix authFetch di atas untuk forbidden vs authError).
+  // Sebagai gantinya, definisikan `window.onAuthReady = function(session) {...}`
+  // di halaman tsb — akan dipanggil di sini SETELAH requireRole() selesai & lolos.
   document.addEventListener('DOMContentLoaded', async () => {
     const requiredRole = document.body.dataset.requireRole;
     let session;
     if (requiredRole) {
       session = await requireRole(requiredRole);
-      if (!session) return; /
+      if (!session) return; // diblokir (no access / redirect login) — stop di sini
     } else {
       session = await getSession();
     }
@@ -119,4 +137,7 @@ const SeminyakAuth = (function () {
   return { getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
 })();
 
+// PENTING: assign eksplisit ke window — `const` di top-level TIDAK otomatis
+// menempel ke window, padahal halaman lain (mis. administration.html) mengecek
+// `window.SeminyakAuth` secara langsung.
 window.SeminyakAuth = SeminyakAuth;
