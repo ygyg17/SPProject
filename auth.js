@@ -21,7 +21,6 @@ const SeminyakAuth = (function () {
     }
     const role = String(
       session.user.app_metadata?.role ||
-      session.user.user_metadata?.role ||
       'user'
     ).trim().toLowerCase();
     // Dukung multi-role dipisah koma, contoh: data-require-role="admin,staff"
@@ -80,8 +79,8 @@ const SeminyakAuth = (function () {
       showNoAccessAndGoBack();
       throw new Error(data.error || data.message || 'Forbidden');
     }
-    if (!res.ok || data.success === false) {
-      throw new Error(data.message || data.error || 'Request failed');
+    if (!res.ok && data.success === false) {
+      throw new Error(data.message || 'Request failed');
     }
     return data;
   }
