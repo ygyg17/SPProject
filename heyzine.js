@@ -47,10 +47,14 @@
 
   async function heyzine(action, payload) {
     if (!API_URL) throw new Error('HEYZINE_API_URL belum diisi di config.js');
-    return SeminyakAuth.authFetch(API_URL, {
+    const data = await SeminyakAuth.authFetch(API_URL, {
       method: 'POST',
       body: JSON.stringify({ action: action, payload: payload || {} })
     });
+    if (data && data.success === false) {
+      throw new Error(data.message || data.error || 'Request Heyzine gagal');
+    }
+    return data;
   }
 
   function escapeHtml(value) {
@@ -134,6 +138,9 @@
     el.count.textContent = '...';
     const data = await heyzine('list');
     state.flipbooks = Array.isArray(data) ? data : (data.flipbooks || []);
+    if (!Array.isArray(state.flipbooks)) {
+      throw new Error('Format list Heyzine tidak dikenali.');
+    }
     renderRows();
   }
 
@@ -241,7 +248,9 @@
     hasLoaded = true;
     loadFlipbooks().catch(function (error) {
       showToast(error.message, true);
-      el.rows.innerHTML = '<tr><td colspan="5" class="state-cell">Gagal memuat flipbook.</td></tr>';
+      el.rows.innerHTML = '<tr><td colspan="5" class="state-cell">Gagal memuat flipbook: ' + escapeHtml(error.message) + '</td></tr>';
+      el.summary.textContent = 'List Heyzine gagal dimuat';
+      el.count.textContent = 'error';
     });
   }
 

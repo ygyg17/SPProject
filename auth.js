@@ -80,8 +80,8 @@ const SeminyakAuth = (function () {
       showNoAccessAndGoBack();
       throw new Error(data.error || data.message || 'Forbidden');
     }
-    if (!res.ok && data.success === false) {
-      throw new Error(data.message || 'Request failed');
+    if (!res.ok || data.success === false) {
+      throw new Error(data.message || data.error || 'Request failed');
     }
     return data;
   }
