@@ -21,6 +21,7 @@ const SeminyakAuth = (function () {
     }
     const role = String(
       session.user.app_metadata?.role ||
+      session.user.user_metadata?.role ||
       'user'
     ).trim().toLowerCase();
     // Dukung multi-role dipisah koma, contoh: data-require-role="admin,staff"
