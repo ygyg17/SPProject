@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -353,14 +352,14 @@
       return;
     }
 
-    tableBody.innerHTML = filtered.map(function (item) {
+    tableBody.innerHTML = filtered.map(function (item, index) {
       const statusClass = item.status === 'Done' ? 'done' : 'in-progress';
       const doneDateStr = item.doneDate ? formatDate_(item.doneDate) : '';
       const fileCell = item.fileUrl
         ? '<a class="file-link" href="' + escapeAttr(item.fileUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">File ' + escapeHtml(item.fileName || 'Attachment') + '</a>'
         : '<span class="file-none">-</span>';
 
-      return '<tr data-row="' + item.rowIndex + '">' +
+      return '<tr data-item-index="' + index + '">' +
         '<td data-label="Type"><span class="type-pill-td">' + escapeHtml(item.type) + '</span></td>' +
         '<td data-label="Name">' + escapeHtml(item.name) + '</td>' +
         '<td data-label="Sign">' + escapeHtml(item.sign) + '</td>' +
@@ -370,10 +369,10 @@
         '</tr>';
     }).join('');
 
-    Array.prototype.forEach.call(tableBody.querySelectorAll('tr[data-row]'), function (tr) {
+    Array.prototype.forEach.call(tableBody.querySelectorAll('tr[data-item-index]'), function (tr) {
       tr.addEventListener('click', function () {
-        const rowIndex = Number(tr.getAttribute('data-row'));
-        const item = state.items.find(function (i) { return i.rowIndex === rowIndex; });
+        const itemIndex = Number(tr.getAttribute('data-item-index'));
+        const item = filtered[itemIndex];
         if (item) openEdit(item);
       });
     });
