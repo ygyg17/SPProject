@@ -3,31 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Administration — The Seminyak</title>
+<title>Administration - The Seminyak</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   .admin-topline { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .admin-actions { display:flex; gap:10px; flex-wrap:wrap; }
   #typeChips { margin-bottom:14px; }
   .status-tabs { display:flex; gap:8px; margin-bottom:22px; }
   .status-tab { font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:8px 16px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--muted); cursor:pointer; transition:.15s ease; }
   .status-tab:hover { border-color:var(--line-2); color:var(--ink-2); }
   .status-tab.active { background:var(--gold-dim); color:var(--gold); border-color:var(--gold-border); }
-  .btn-add { display:inline-flex; align-items:center; gap:8px; padding:10px 18px; background:var(--gold); color:#fff; border:none; border-radius:8px; font-family:'Inter',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:background .18s; white-space:nowrap; }
-  .btn-add:hover { background:var(--gold-hover); }
+  .btn-add,
+  .btn-pdf { display:inline-flex; align-items:center; gap:8px; padding:10px 18px; color:#fff; border:none; border-radius:8px; font-family:'Inter', sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:transform .18s ease, background .18s ease, box-shadow .18s ease; white-space:nowrap; }
+  .btn-add { background:var(--gold); }
+  .btn-add:hover { background:var(--gold-hover); transform:translateY(-1px); }
+  .btn-pdf { background:var(--gold); }
+  .btn-pdf:hover { background:var(--gold-hover); transform:translateY(-1px); }
   .file-link { display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; color:var(--gold); text-decoration:none; }
   .file-link:hover { text-decoration:underline; }
   .file-none { font-size:12px; color:var(--muted); font-family:'JetBrains Mono', monospace; }
-  .status-badge { display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono', monospace; font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:4px 10px; border-radius:20px; }
+  .status-badge { display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono', monospace; font-size:11.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:5px 12px; border-radius:20px; }
   .status-badge.in-progress { background:var(--gold-dim); color:var(--gold); border:1px solid var(--gold-border); }
   .status-badge.done { background:var(--ok-bg); color:var(--ok); }
   .status-badge .b-date { font-weight:500; opacity:.75; margin-left:2px; }
   .file-drop { border:1.5px dashed var(--line-2); border-radius:8px; padding:16px; text-align:center; cursor:pointer; transition:.15s ease; font-size:12.5px; color:var(--muted); }
-  .file-drop:hover, .file-drop.drag { border-color:var(--gold); background:var(--gold-dim); color:var(--gold); }
+  .file-drop:hover,
+  .file-drop.drag { border-color:var(--gold); background:var(--gold-dim); color:var(--gold); }
   .file-drop input { display:none; }
   .file-picked { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px; color:var(--ink-2); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-top:8px; }
   .file-picked button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; line-height:1; }
@@ -36,15 +42,40 @@
   #reqTable.req-table { font-size:14.5px; }
   #reqTable.req-table th { font-size:11.5px; }
   #reqTable.req-table td { padding:16px; }
-  .status-badge { font-size:11.5px; padding:5px 12px; }
-  .file-link { font-size:13.5px; }
+
+  .pdf-modal-card { width:min(92vw, 760px); }
+  .pdf-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; }
+  .pdf-drop { padding:20px; background:var(--bg); }
+  .pdf-section-title { display:block; font-size:12px; font-weight:600; color:var(--ink-2); margin-bottom:8px; }
+  .pdf-preview-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:12px; margin-top:12px; }
+  .pdf-preview-card { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
+  .pdf-preview-card img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:var(--bg); }
+  .pdf-preview-card .meta { padding:10px 12px 12px; }
+  .pdf-preview-card .meta strong { display:block; font-size:12px; line-height:1.4; color:var(--ink); word-break:break-word; }
+  .pdf-preview-card .meta span { display:block; margin-top:4px; font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--muted); letter-spacing:.04em; text-transform:uppercase; }
+  .pdf-preview-empty { margin-top:12px; padding:14px; border:1px dashed var(--line-2); border-radius:10px; color:var(--muted); font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; text-align:center; }
+  .pdf-help { margin-top:10px; font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:.05em; color:var(--muted); text-transform:uppercase; }
+
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  @media (max-width: 760px) {
+    .pdf-grid { grid-template-columns:1fr; }
+    .admin-actions { width:100%; }
+    .btn-add,
+    .btn-pdf { flex:1 1 180px; justify-content:center; }
+    .pdf-preview-grid { grid-template-columns:1fr; }
+  }
 </style>
-</>
+</head>
 <body data-active-page="administration" data-require-role="admin,staff">
-  
+
 <div class="topbar">
   <button class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
   </button>
   <img class="topbar-logo" src="https://cdn-5d8995b3f911c90950a6130b.closte.com/wp-content/uploads/2024/08/the-seminyak-logo-aug24v1.png" alt="The Seminyak">
   <div class="topbar-div"></div>
@@ -58,16 +89,30 @@
 
 <div class="body-wrap" style="grid-template-columns: 1fr;">
   <div class="right-panel">
-
     <div class="admin-topline">
       <div class="board-title-wrap">
         <h2>Administration List</h2>
-        <div class="board-sub">Dokumen &amp; approval tracking — BS, PR, Design, Proposal, Others</div>
+        <div class="board-sub">Document and approval tracking - BS, PR, Design, Proposal, Others</div>
       </div>
-      <button class="btn-add" id="openAddBtn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Input Baru
-      </button>
+
+      <div class="admin-actions">
+        <button class="btn-pdf" id="openPdfBtn" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12"></path>
+            <path d="M7 10l5 5 5-5"></path>
+            <path d="M5 21h14"></path>
+          </svg>
+          Generate PDF
+        </button>
+
+        <button class="btn-add" id="openAddBtn" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Add Entry
+        </button>
+      </div>
     </div>
 
     <div class="chips" id="typeChips">
@@ -87,7 +132,7 @@
     <div class="board">
       <div class="table-wrapper">
         <table class="req-table" id="reqTable">
-          <t>
+          <thead>
             <tr>
               <th>Type</th>
               <th>Name</th>
@@ -95,22 +140,23 @@
               <th>Status</th>
               <th>File</th>
             </tr>
-          </t>
+          </thead>
           <tbody id="tableBody">
             <tr><td colspan="5"><div class="state-box"><div class="state-spinner"></div><div class="state-label">Loading data...</div></div></td></tr>
           </tbody>
         </table>
       </div>
     </div>
-
   </div>
 </div>
 
 <div class="overlay" id="formOverlay">
   <div class="modal-card">
-    <div class="modal-">
-      <h3 id="formTitle">Input Baru</h3>
-      <button class="close-btn" id="formCloseBtn">&times;</button>
+    <div class="modal-head">
+      <div>
+        <h3 id="formTitle">Add Entry</h3>
+      </div>
+      <button class="close-btn" id="formCloseBtn" type="button">&times;</button>
     </div>
 
     <form id="entryForm">
@@ -120,7 +166,7 @@
       <div class="field">
         <label>Type</label>
         <select id="f-type" required>
-          <option value="" disabled selected>Pilih type</option>
+          <option value="" disabled selected>Select type</option>
           <option value="BS">BS</option>
           <option value="PR">PR</option>
           <option value="Design">Design</option>
@@ -131,13 +177,13 @@
 
       <div class="field">
         <label>Name</label>
-        <input type="text" id="f-name" placeholder="Nama dokumen / keperluan" required>
+        <input type="text" id="f-name" placeholder="Document or request name" required>
       </div>
 
       <div class="field">
         <label>Sign</label>
         <select id="f-sign" required>
-          <option value="" disabled selected>Pilih penandatangan</option>
+          <option value="" disabled selected>Select signer</option>
           <option value="DOF">DOF</option>
           <option value="GM">GM</option>
           <option value="Director">Director</option>
@@ -156,7 +202,7 @@
       <div class="field">
         <label>File <span class="opt-tag">optional</span></label>
         <div class="file-drop" id="fileDrop">
-          <span id="fileDropLabel">Klik atau drag file ke sini</span>
+          <span id="fileDropLabel">Click or drag a file here</span>
           <input type="file" id="f-file">
         </div>
         <div id="filePickedWrap"></div>
@@ -172,45 +218,99 @@
   </div>
 </div>
 
-<div class="toast" id="toast"><span class="toast-icon" id="toastIcon"></span><span id="toastMsg"></span></div>
+<div class="overlay" id="pdfOverlay">
+  <div class="modal-card pdf-modal-card">
+    <div class="modal-head">
+      <div>
+        <h3>Details</h3>
+        <p>Fill in the details and download the PDF.</p>
+      </div>
+      <button class="close-btn" id="pdfCloseBtn" type="button">&times;</button>
+    </div>
+
+    <form id="pdfForm">
+      <div class="pdf-grid">
+        <div class="field">
+          <label for="pdfName">Name</label>
+          <input type="text" id="pdfName" placeholder="Sample - Document bag & personal card - Souvenir" required>
+        </div>
+
+        <div class="field">
+          <label for="pdfVendor">Vendor</label>
+          <input type="text" id="pdfVendor" placeholder="Souvenir Moment Bali" required>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="pdfReason">Reason</label>
+        <textarea id="pdfReason" placeholder="Explain the reason for this sample or request." required></textarea>
+      </div>
+
+      <div class="field">
+        <span class="pdf-section-title">Pictures</span>
+        <div class="file-drop pdf-drop" id="pdfImageDrop">
+          <span id="pdfImageDropLabel">Click or drag 2 to 5 images here</span>
+          <input type="file" id="pdfImages" accept="image/*" multiple>
+        </div>
+        <div class="pdf-help">Use 2 to 5 images.</div>
+        <div id="pdfPreviewWrap" class="pdf-preview-empty">No images selected.</div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="pdfCancelBtn">Cancel</button>
+        <button type="submit" class="btn-primary" id="pdfSubmitBtn">
+          <span id="pdfSubmitLabel">Download PDF</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon"></span>
+  <span id="toastMsg"></span>
+</div>
 
 <script>
 (function () {
   const GAS_URL = (typeof CONFIG !== 'undefined' && CONFIG.ADMIN_GAS_WEB_APP_URL) || '';
 
-  const state = { items: [], typeFilter: 'ALL', statusFilter: 'In Progress', pickedFile: null };
+  const state = {
+    items: [],
+    typeFilter: 'ALL',
+    statusFilter: 'In Progress',
+    pickedFile: null,
+    pdfImages: []
+  };
 
   const tableBody = document.getElementById('tableBody');
   const typeChips = document.getElementById('typeChips');
   const statusTabs = document.getElementById('statusTabs');
 
-  // ─── Clock ───
   function tickClock() {
     const el = document.getElementById('topbarClock');
     if (!el) return;
     const now = new Date();
     const opts = { weekday: 'short', day: '2-digit', month: 'short' };
-    el.innerHTML = now.toLocaleDateString('en-GB', opts) + ' &nbsp; <b>' +
+    el.innerHTML = now.toLocaleDateString('en-GB', opts) + ' <b>' +
       now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '</b>';
   }
   tickClock();
   setInterval(tickClock, 1000);
 
-  // ─── Toast ───
   function showToast(msg, ok) {
     const toast = document.getElementById('toast');
-    document.getElementById('toastIcon').textContent = ok ? '✓' : '✕';
+    document.getElementById('toastIcon').textContent = ok ? 'OK' : '!';
     document.getElementById('toastMsg').textContent = msg;
     toast.className = 'toast show ' + (ok ? 'toast-ok' : 'toast-err');
     setTimeout(function () { toast.className = 'toast'; }, 3200);
   }
 
-  // ─── API ───
   function apiGet() {
-    console.log('[admin debug] apiGet called. window.SeminyakAuth exists?', !!window.SeminyakAuth, 'GAS_URL:', GAS_URL);
     if (window.SeminyakAuth) return window.SeminyakAuth.authFetch(GAS_URL, { method: 'GET' });
     return fetch(GAS_URL, { method: 'GET' }).then(function (r) { return r.json(); });
   }
+
   function apiPost(payload) {
     if (window.SeminyakAuth) return window.SeminyakAuth.authFetch(GAS_URL, {
       method: 'POST',
@@ -224,19 +324,19 @@
     }).then(function (r) { return r.json(); });
   }
 
-  // ─── Load & render ───
   function load() {
     if (!GAS_URL) {
-      tableBody.innerHTML = '<tr><td colspan="5"><div class="state-box state-error"><div class="state-icon">⚠</div><div class="state-label">ADMIN_GAS_WEB_APP_URL belum diisi di config.js</div></div></td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="5"><div class="state-box state-error"><div class="state-icon">!</div><div class="state-label">ADMIN_GAS_WEB_APP_URL is not set in config.js</div></div></td></tr>';
       return;
     }
+
     tableBody.innerHTML = '<tr><td colspan="5"><div class="state-box"><div class="state-spinner"></div><div class="state-label">Loading data...</div></div></td></tr>';
     apiGet().then(function (res) {
       if (!res.ok) throw new Error(res.error || 'Failed to load');
       state.items = res.items || [];
       render();
     }).catch(function (err) {
-      tableBody.innerHTML = '<tr><td colspan="5"><div class="state-box state-error"><div class="state-icon">⚠</div><div class="state-label">' + escapeHtml(String(err.message || err)) + '</div></div></td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="5"><div class="state-box state-error"><div class="state-icon">!</div><div class="state-label">' + escapeHtml(String(err.message || err)) + '</div></div></td></tr>';
     });
   }
 
@@ -248,7 +348,7 @@
     });
 
     if (filtered.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="5"><div class="state-box"><div class="state-icon">📋</div><div class="state-label">No entries</div></div></td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="5"><div class="state-box"><div class="state-icon">[]</div><div class="state-label">No entries</div></div></td></tr>';
       return;
     }
 
@@ -256,8 +356,8 @@
       const statusClass = item.status === 'Done' ? 'done' : 'in-progress';
       const doneDateStr = item.doneDate ? formatDate_(item.doneDate) : '';
       const fileCell = item.fileUrl
-        ? '<a class="file-link" href="' + escapeAttr(item.fileUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">📎 ' + escapeHtml(item.fileName || 'File') + '</a>'
-        : '<span class="file-none">—</span>';
+        ? '<a class="file-link" href="' + escapeAttr(item.fileUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">File ' + escapeHtml(item.fileName || 'Attachment') + '</a>'
+        : '<span class="file-none">-</span>';
 
       return '<tr data-row="' + item.rowIndex + '">' +
         '<td data-label="Type"><span class="type-pill-td">' + escapeHtml(item.type) + '</span></td>' +
@@ -271,10 +371,10 @@
 
     Array.prototype.forEach.call(tableBody.querySelectorAll('tr[data-row]'), function (tr) {
       tr.addEventListener('click', function () {
-  const rowIndex = tr.getAttribute('data-row');   // hapus Number(...)
-  const item = state.items.find(function (i) { return String(i.rowIndex) === String(rowIndex); });
-  if (item) openEdit(item);
-});
+        const rowIndex = Number(tr.getAttribute('data-row'));
+        const item = state.items.find(function (i) { return i.rowIndex === rowIndex; });
+        if (item) openEdit(item);
+      });
     });
   }
 
@@ -283,14 +383,17 @@
     if (isNaN(d)) return '';
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
   }
+
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
-  function escapeAttr(s) { return escapeHtml(s); }
 
-  // ─── Filters ───
+  function escapeAttr(s) {
+    return escapeHtml(s);
+  }
+
   typeChips.addEventListener('click', function (e) {
     const chip = e.target.closest('.chip');
     if (!chip) return;
@@ -309,11 +412,9 @@
     render();
   });
 
-  // ─── Modal open/close ───
   const formOverlay = document.getElementById('formOverlay');
   const entryForm = document.getElementById('entryForm');
   const fTitle = document.getElementById('formTitle');
-  const fSubmitLabel = document.getElementById('formSubmitLabel');
 
   function resetForm() {
     entryForm.reset();
@@ -321,40 +422,39 @@
     document.getElementById('f-rowId').value = '';
     state.pickedFile = null;
     document.getElementById('filePickedWrap').innerHTML = '';
-    document.getElementById('fileDropLabel').textContent = 'Klik atau drag file ke sini';
+    document.getElementById('fileDropLabel').textContent = 'Click or drag a file here';
   }
 
   function openAdd() {
     resetForm();
-    fTitle.textContent = 'Input Baru';
-    fSubmitLabel.textContent = 'Save';
+    fTitle.textContent = 'Add Entry';
+    document.getElementById('formSubmitLabel').textContent = 'Save';
     formOverlay.classList.add('show');
   }
 
   function openEdit(item) {
     resetForm();
     fTitle.textContent = 'Edit Entry';
-    fSubmitLabel.textContent = 'Update';
+    document.getElementById('formSubmitLabel').textContent = 'Update';
     document.getElementById('f-rowIndex').value = item.rowIndex;
     document.getElementById('f-rowId').value = item.rowId;
     document.getElementById('f-type').value = item.type;
     document.getElementById('f-name').value = item.name;
     document.getElementById('f-sign').value = item.sign;
     document.getElementById('f-status').value = item.status;
-    if (item.fileUrl) {
-      document.getElementById('fileDropLabel').textContent = 'Ganti file (opsional)';
-    }
+    if (item.fileUrl) document.getElementById('fileDropLabel').textContent = 'Replace file (optional)';
     formOverlay.classList.add('show');
   }
 
-  function closeForm() { formOverlay.classList.remove('show'); }
+  function closeForm() {
+    formOverlay.classList.remove('show');
+  }
 
   document.getElementById('openAddBtn').addEventListener('click', openAdd);
   document.getElementById('formCloseBtn').addEventListener('click', closeForm);
   document.getElementById('formCancelBtn').addEventListener('click', closeForm);
   formOverlay.addEventListener('click', function (e) { if (e.target === formOverlay) closeForm(); });
 
-  // ─── File picker ───
   const fileDrop = document.getElementById('fileDrop');
   const fileInput = document.getElementById('f-file');
   const filePickedWrap = document.getElementById('filePickedWrap');
@@ -379,7 +479,7 @@
         mimeType: file.type || 'application/octet-stream',
         data: reader.result.split(',')[1]
       };
-      filePickedWrap.innerHTML = '<div class="file-picked"><span>📎 ' + escapeHtml(file.name) + '</span><button type="button" id="removeFileBtn">&times;</button></div>';
+      filePickedWrap.innerHTML = '<div class="file-picked"><span>File ' + escapeHtml(file.name) + '</span><button type="button" id="removeFileBtn">&times;</button></div>';
       document.getElementById('removeFileBtn').addEventListener('click', function (e) {
         e.stopPropagation();
         state.pickedFile = null;
@@ -390,7 +490,6 @@
     reader.readAsDataURL(file);
   }
 
-  // ─── Submit ───
   entryForm.addEventListener('submit', function (e) {
     e.preventDefault();
     const submitBtn = document.getElementById('formSubmitBtn');
@@ -404,7 +503,10 @@
       sign: document.getElementById('f-sign').value,
       status: document.getElementById('f-status').value
     };
-    if (rowIndex) { payload.rowIndex = rowIndex; payload.rowId = rowId; }
+    if (rowIndex) {
+      payload.rowIndex = rowIndex;
+      payload.rowId = rowId;
+    }
     if (state.pickedFile) payload.file = state.pickedFile;
 
     submitBtn.disabled = true;
@@ -421,6 +523,256 @@
       submitBtn.disabled = false;
       submitBtn.innerHTML = '<span id="formSubmitLabel">' + (rowIndex ? 'Update' : 'Save') + '</span>';
     });
+  });
+
+  const pdfOverlay = document.getElementById('pdfOverlay');
+  const pdfForm = document.getElementById('pdfForm');
+  const pdfImageInput = document.getElementById('pdfImages');
+  const pdfImageDrop = document.getElementById('pdfImageDrop');
+  const pdfPreviewWrap = document.getElementById('pdfPreviewWrap');
+
+  function resetPdfForm() {
+    pdfForm.reset();
+    state.pdfImages = [];
+    renderPdfPreview();
+    document.getElementById('pdfImageDropLabel').textContent = 'Click or drag 2 to 5 images here';
+  }
+
+  function openPdfModal() {
+    resetPdfForm();
+    pdfOverlay.classList.add('show');
+  }
+
+  function closePdfModal() {
+    pdfOverlay.classList.remove('show');
+  }
+
+  function renderPdfPreview() {
+    if (!state.pdfImages.length) {
+      pdfPreviewWrap.className = 'pdf-preview-empty';
+      pdfPreviewWrap.textContent = 'No images selected.';
+      return;
+    }
+
+    pdfPreviewWrap.className = 'pdf-preview-grid';
+    pdfPreviewWrap.innerHTML = state.pdfImages.map(function (image) {
+      return '<div class="pdf-preview-card">' +
+        '<img src="' + image.dataUrl + '" alt="' + escapeAttr(image.name) + '">' +
+        '<div class="meta"><strong>' + escapeHtml(image.name) + '</strong><span>' + image.width + ' x ' + image.height + ' px</span></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function readImageFile(file) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        const img = new Image();
+        img.onload = function () {
+          resolve({
+            name: file.name,
+            type: file.type || 'image/jpeg',
+            dataUrl: reader.result,
+            width: img.width,
+            height: img.height
+          });
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function handlePdfImages(fileList) {
+    const files = Array.prototype.filter.call(fileList || [], function (file) {
+      return /^image\//.test(file.type);
+    });
+
+    if (!files.length) {
+      showToast('Please choose image files only.', false);
+      return;
+    }
+
+    if (files.length < 2 || files.length > 5) {
+      showToast('Please select 2 to 5 images.', false);
+      pdfImageInput.value = '';
+      return;
+    }
+
+    Promise.all(files.map(readImageFile)).then(function (images) {
+      state.pdfImages = images;
+      document.getElementById('pdfImageDropLabel').textContent = images.length + ' image(s) selected';
+      renderPdfPreview();
+    }).catch(function () {
+      showToast('Failed to read the selected image files.', false);
+    });
+  }
+
+  function fitImage(width, height, maxWidth, maxHeight) {
+    const ratio = Math.min(maxWidth / width, maxHeight / height);
+    return {
+      width: width * ratio,
+      height: height * ratio
+    };
+  }
+
+  function ensurePdfSpace(doc, cursor, margin, neededHeight) {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (cursor.y + neededHeight <= pageHeight - margin) return cursor.y;
+    doc.addPage();
+    cursor.y = margin;
+    return cursor.y;
+  }
+
+  function buildPdfFileName(value) {
+    const base = (value || 'sample-details')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return (base || 'sample-details') + '.pdf';
+  }
+
+  function drawLabelValue(doc, cursor, label, value, contentX, contentWidth, margin) {
+    const labelWidth = 62;
+    const lines = doc.splitTextToSize(': ' + (value || '-'), contentWidth - labelWidth);
+    const lineHeight = 18;
+    ensurePdfSpace(doc, cursor, margin, lines.length * lineHeight + 8);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(label, contentX, cursor.y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.text(lines, contentX + labelWidth, cursor.y);
+    cursor.y += lines.length * lineHeight + 8;
+  }
+
+  function drawImages(doc, cursor, images, contentX, contentWidth, margin) {
+    if (!images.length) return;
+
+    ensurePdfSpace(doc, cursor, margin, 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Pictures', contentX, cursor.y);
+    cursor.y += 18;
+
+    const gap = 12;
+    const isSingle = images.length === 1;
+    const boxWidth = isSingle ? contentWidth : (contentWidth - gap) / 2;
+    const maxBoxHeight = isSingle ? 280 : 220;
+
+    for (let index = 0; index < images.length; index += isSingle ? 1 : 2) {
+      const rowImages = isSingle ? [images[index]] : images.slice(index, index + 2);
+      const rowSizes = rowImages.map(function (rowImage) {
+        return fitImage(rowImage.width, rowImage.height, boxWidth, maxBoxHeight);
+      });
+      const rowHeight = rowSizes.reduce(function (maxHeight, size) {
+        return Math.max(maxHeight, size.height);
+      }, 0);
+
+      ensurePdfSpace(doc, cursor, margin, rowHeight + 46);
+
+      rowImages.forEach(function (image, column) {
+        const size = rowSizes[column];
+        const x = contentX + (column * (boxWidth + gap));
+        const y = cursor.y;
+        const format = /png$/i.test(image.type) ? 'PNG' : 'JPEG';
+
+        doc.setDrawColor(192, 200, 197);
+        doc.rect(x, y, boxWidth, rowHeight + 18);
+        doc.addImage(image.dataUrl, format, x + ((boxWidth - size.width) / 2), y + 8, size.width, size.height, undefined, 'FAST');
+      });
+
+      cursor.y += rowHeight + 30;
+    }
+  }
+
+  async function generatePdf(details) {
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error('jsPDF failed to load. Please check the script connection.');
+    }
+
+    const jsPDF = window.jspdf.jsPDF;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const margin = 42;
+    const contentX = margin;
+    const contentWidth = doc.internal.pageSize.getWidth() - (margin * 2);
+    const cursor = { y: margin + 16 };
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('Details', contentX, cursor.y);
+    cursor.y += 30;
+
+    drawLabelValue(doc, cursor, 'Name', details.name, contentX, contentWidth, margin);
+    drawLabelValue(doc, cursor, 'Vendor', details.vendor, contentX, contentWidth, margin);
+    drawLabelValue(doc, cursor, 'Reason', details.reason, contentX, contentWidth, margin);
+    drawImages(doc, cursor, details.images, contentX, contentWidth, margin);
+
+    doc.save(buildPdfFileName(details.name));
+  }
+
+  document.getElementById('openPdfBtn').addEventListener('click', openPdfModal);
+  document.getElementById('pdfCloseBtn').addEventListener('click', closePdfModal);
+  document.getElementById('pdfCancelBtn').addEventListener('click', closePdfModal);
+  pdfOverlay.addEventListener('click', function (e) { if (e.target === pdfOverlay) closePdfModal(); });
+
+  pdfImageDrop.addEventListener('click', function () { pdfImageInput.click(); });
+  pdfImageDrop.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    pdfImageDrop.classList.add('drag');
+  });
+  pdfImageDrop.addEventListener('dragleave', function () {
+    pdfImageDrop.classList.remove('drag');
+  });
+  pdfImageDrop.addEventListener('drop', function (e) {
+    e.preventDefault();
+    pdfImageDrop.classList.remove('drag');
+    if (e.dataTransfer.files && e.dataTransfer.files.length) handlePdfImages(e.dataTransfer.files);
+  });
+  pdfImageInput.addEventListener('change', function () {
+    if (pdfImageInput.files && pdfImageInput.files.length) handlePdfImages(pdfImageInput.files);
+  });
+
+  pdfForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const submitBtn = document.getElementById('pdfSubmitBtn');
+    const submitLabel = document.getElementById('pdfSubmitLabel');
+    submitBtn.disabled = true;
+    submitLabel.innerHTML = '<span class="spinner-sm"></span>';
+
+    const details = {
+      name: document.getElementById('pdfName').value.trim(),
+      vendor: document.getElementById('pdfVendor').value.trim(),
+      reason: document.getElementById('pdfReason').value.trim(),
+      images: state.pdfImages.slice()
+    };
+
+    if (details.images.length < 2 || details.images.length > 5) {
+      submitBtn.disabled = false;
+      submitLabel.textContent = 'Download PDF';
+      showToast('Please select 2 to 5 images.', false);
+      return;
+    }
+
+    generatePdf(details).then(function () {
+      showToast('PDF downloaded successfully.', true);
+      closePdfModal();
+    }).catch(function (err) {
+      showToast(String(err.message || err), false);
+    }).finally(function () {
+      submitBtn.disabled = false;
+      submitLabel.textContent = 'Download PDF';
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    closeForm();
+    closePdfModal();
   });
 
   load();
