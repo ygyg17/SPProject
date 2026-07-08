@@ -4,15 +4,16 @@
 // 2. Taruh <div id="sidebar-container"></div> + <div class="sidebar-overlay" id="sidebarOverlay"></div>
 //    tepat setelah topbar (lihat contoh index.html)
 // 3. Tambahkan tombol hamburger dengan id="sidebarMenuBtn" di dalam .topbar (untuk mobile)
-// 4. Load script ini paling akhir sebelum </body>: <script src="sidebar-loader.js"></script>
+// 4. Load script ini paling akhir sebelum </body>: <script src="sidebar-loader.js?v=..."></script>
 // 5. Opsional: set <body data-active-page="task"> kalau nama file bukan task.html/design.html/dst
 //    (misal disimpan sebagai index.html)
 
 (function () {
   var container = document.getElementById('sidebar-container');
   if (!container) return;
+  var assetVersion = '20260708-2';
 
-  fetch('sidebar.html')
+  fetch('sidebar.html?v=' + assetVersion, { cache: 'no-store' })
     .then(function (res) {
       if (!res.ok) throw new Error('Gagal load sidebar.html (' + res.status + ')');
       return res.text();
