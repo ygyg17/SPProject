@@ -58,7 +58,7 @@ html, body {
 /* ─── LAYOUT ─── */
 .body-wrap { display: grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 52px); max-width: 100%; }
 .body-wrap.single-page { display: block; min-height: calc(100vh - 52px); }
-.body-wrap.single-page .right-panel { max-width: 1180px; margin: 0 auto; }
+.body-wrap.single-page .right-panel { width: 100%; max-width: none; margin: 0; }
 
 /* ─── LEFT PANEL ─── */
 .left-panel { border-right: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; }
