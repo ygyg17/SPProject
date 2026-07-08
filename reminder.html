@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-active-page="reminder" data-require-role="admin">
+  <nav class="topbar">
+    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img class="topbar-logo" src="https://cdn-5d8995b3f911c90950a6130b.closte.com/wp-content/uploads/2024/08/the-seminyak-logo-aug24v1.png" alt="The Seminyak">
+    <div class="topbar-div"></div>
+    <span class="topbar-title">Marketing Desk</span>
+    <div id="authUserBox"></div>
+    <div class="topbar-clock" id="mastClock">-</div>
+  </nav>
+
+  <div id="sidebar-container"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="body-wrap single-page">
+    <section class="right-panel">
+      <div class="board-header page-header">
+        <div class="board-title-wrap">
+          <div class="panel-eyebrow">Reminder</div>
+          <h2>Reminders</h2>
+          <div class="board-sub">Calendar view for scheduled WA notifications.</div>
+        </div>
+        <div class="header-actions">
+          <span class="count-badge" id="countLabel">loading...</span>
+          <button type="button" class="btn-add" id="addNewBtn">+ Add New</button>
+        </div>
+      </div>
+
+      <div class="calendar-wrap show" id="calendarWrap">
+        <div class="cal-nav">
+          <button type="button" class="cal-nav-btn" id="calPrev" aria-label="Previous month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button type="button" class="cal-nav-btn" id="calNext" aria-label="Next month">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <div class="cal-month-label"><span id="calMonthLabel">-</span></div>
+        </div>
+
+        <div class="cal-grid-wrap">
+          <div class="cal-dow">
+            <div class="cal-dow-cell">Mon</div><div class="cal-dow-cell">Tue</div><div class="cal-dow-cell">Wed</div>
+            <div class="cal-dow-cell">Thu</div><div class="cal-dow-cell">Fri</div><div class="cal-dow-cell">Sat</div><div class="cal-dow-cell">Sun</div>
+          </div>
+          <div class="cal-days" id="calDays">
+            <div class="state-box">
+              <div class="state-spinner"></div>
+              <div class="state-label">Loading reminders...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="agenda-wrap" id="agendaWrap"></div>
+
+        <div class="cal-detail" id="calDetail">
+          <div class="cal-detail-head">
+            <h4 id="calDetailTitle">-</h4>
+            <button type="button" class="cal-detail-close" id="calDetailClose" aria-label="Close detail">&times;</button>
+          </div>
+          <div class="cal-detail-list" id="calDetailList"></div>
+        </div>
+      </div>
+
+      <div class="help-note">Click a date to view reminders. Click a reminder to edit.</div>
+    </section>
+  </main>
+
+  <a class="wa-float" href="https://wa.me/6281776452000" target="_blank" rel="noopener">WA Bot</a>
+
+  <div id="toastOk" class="toast toast-ok"><span class="toast-icon">✓</span><span id="toastOkMsg">Saved</span></div>
+  <div id="toastErr" class="toast toast-err"><span class="toast-icon">✕</span><span id="toastErrMsg">Something went wrong</span></div>
+
+  <div id="reminderOverlay" class="overlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitle">Add Reminder</h3>
+        <button type="button" class="close-btn" id="modalClose">&times;</button>
+      </div>
+      <form id="reminderForm">
+        <input type="hidden" id="reminderId">
+        <div class="field">
+          <label for="reminderName">Reminder Name</label>
+          <input id="reminderName" type="text" placeholder="Send weekly recap" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="reminderDate">Date</label>
+          <input id="reminderDate" type="date">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="modalCancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="saveBtn"><span id="saveLabel">Save Reminder</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = SUPABASE_CONFIG.TASKS_API_URL;
+    let allItems = [];
+    let editingId = '';
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+    let calSelectedDate = null;
+
+    const countLabel = document.getElementById('countLabel');
+    const overlay = document.getElementById('reminderOverlay');
+    const form = document.getElementById('reminderForm');
+    const saveBtn = document.getElementById('saveBtn');
+    const saveLabel = document.getElementById('saveLabel');
+    const calDaysEl = document.getElementById('calDays');
+    const calDetail = document.getElementById('calDetail');
+    const calDetailList = document.getElementById('calDetailList');
+    const agendaEl = document.getElementById('agendaWrap');
+
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+    function tickClock() {
+      const now = new Date();
+      const d = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const t = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('mastClock').innerHTML = d + '&nbsp;&nbsp;<b>' + t + '</b>';
+    }
+    tickClock();
+    setInterval(tickClock, 30000);
+
+    function today() { return new Date().toISOString().split('T')[0]; }
+    function isoDate(y, m, d) {
+      const date = new Date(y, m, d);
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    function showToast(id, msgId, msg, dur) {
+      const el = document.getElementById(id);
+      document.getElementById(msgId).textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), dur || 3000);
+    }
+    function showOk(msg) { showToast('toastOk', 'toastOkMsg', msg, 2600); }
+    function showErr(msg) { showToast('toastErr', 'toastErrMsg', msg, 3500); }
+    function esc(s) { return !s ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function fmtDate(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso + 'T00:00:00');
+      if (isNaN(d)) return iso;
+      return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    function reminderItems() {
+      return allItems.filter(i => i.type === 'Reminder');
+    }
+    function itemsOnDate(iso) {
+      return reminderItems().filter(i => (i.deadline || '') === iso);
+    }
+
+    function openModal(item, date) {
+      editingId = item ? String(item.id) : '';
+      document.getElementById('modalTitle').textContent = item ? 'Edit Reminder' : 'Add Reminder';
+      document.getElementById('reminderId').value = editingId;
+      document.getElementById('reminderName').value = item ? (item.taskName || '') : '';
+      document.getElementById('reminderDate').value = item ? (item.deadline || '') : (date || today());
+      saveLabel.textContent = item ? 'Save Changes' : 'Save Reminder';
+      overlay.classList.add('show');
+      setTimeout(() => document.getElementById('reminderName').focus(), 50);
+    }
+
+    function closeModal() {
+      overlay.classList.remove('show');
+      form.reset();
+      editingId = '';
+    }
+
+    document.getElementById('addNewBtn').addEventListener('click', () => openModal(null, calSelectedDate));
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('modalCancel').addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+    function renderRow(item) {
+      return `<div class="task-row reminder-row" data-type="Reminder" id="row-${item.id}" data-row-id="${item.id}">
+        <div class="row-accent"></div>
+        <div class="row-inner">
+          <div class="row-top"><div class="row-type-dot"></div><div class="row-title">${esc(item.taskName || '(untitled reminder)')}</div></div>
+          <div class="row-pills"><span class="pill pill-date">${esc(fmtDate(item.deadline))}</span></div>
+        </div>
+      </div>`;
+    }
+
+    function renderCalendar() {
+      document.getElementById('calMonthLabel').innerHTML = MONTHS[calMonth] + ' <span>' + calYear + '</span>';
+      const todayIso = today();
+      const firstDay = new Date(calYear, calMonth, 1);
+      const lastDay = new Date(calYear, calMonth + 1, 0);
+      const startDow = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+      const prevLast = new Date(calYear, calMonth, 0).getDate();
+      let html = '';
+
+      for (let i = startDow - 1; i >= 0; i--) {
+        html += renderCalCell(prevLast - i, isoDate(calYear, calMonth - 1, prevLast - i), true, todayIso);
+      }
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        html += renderCalCell(d, isoDate(calYear, calMonth, d), false, todayIso);
+      }
+
+      const total = startDow + lastDay.getDate();
+      const rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+      for (let d = 1; d <= rem; d++) {
+        html += renderCalCell(d, isoDate(calYear, calMonth + 1, d), true, todayIso);
+      }
+
+      calDaysEl.innerHTML = html;
+      calDaysEl.querySelectorAll('.cal-cell').forEach(cell => {
+        cell.addEventListener('click', function() {
+          calSelectedDate = this.dataset.date;
+          calDaysEl.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('selected'));
+          this.classList.add('selected');
+          showCalDetail(this.dataset.date);
+        });
+      });
+
+      if (calSelectedDate) {
+        const selectedCell = calDaysEl.querySelector('[data-date="' + calSelectedDate + '"]');
+        if (selectedCell) selectedCell.classList.add('selected');
+      }
+    }
+
+    function renderCalCell(dayNum, iso, otherMonth, todayIso) {
+      const items = itemsOnDate(iso);
+      const cls = 'cal-cell' + (otherMonth ? ' other-month' : '') + (iso === todayIso ? ' today' : '') + (iso === calSelectedDate ? ' selected' : '');
+      let events = items.slice(0, 2).map(i =>
+        `<div class="cal-event type-reminder"><span class="cal-event-dot"></span>${esc((i.taskName || '').substring(0, 18))}</div>`
+      ).join('');
+      if (items.length > 2) events += `<div class="cal-event-more">+${items.length - 2} more</div>`;
+      return `<div class="${cls}" data-date="${iso}"><div class="cal-day-num">${dayNum}</div><div class="cal-events">${events}</div></div>`;
+    }
+
+    function showCalDetail(iso) {
+      const items = itemsOnDate(iso);
+      document.getElementById('calDetailTitle').textContent = fmtDate(iso);
+      if (!items.length) {
+        calDetailList.innerHTML = '<div class="state-box" style="padding:20px"><div class="state-label">No reminders</div></div>';
+      } else {
+        calDetailList.innerHTML = items.map(renderRow).join('');
+      }
+      calDetail.classList.add('show');
+    }
+
+    calDetailList.addEventListener('click', function(e) {
+      const row = e.target.closest('.task-row');
+      if (!row) return;
+      const item = allItems.find(i => String(i.id) === String(row.dataset.rowId));
+      if (item) openModal(item);
+    });
+
+    document.getElementById('calDetailClose').addEventListener('click', function() {
+      calDetail.classList.remove('show');
+      calSelectedDate = null;
+      document.querySelectorAll('.cal-cell').forEach(c => c.classList.remove('selected'));
+    });
+    document.getElementById('calPrev').addEventListener('click', function() {
+      calMonth--;
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      calDetail.classList.remove('show');
+      renderCalendar();
+      renderAgenda();
+    });
+    document.getElementById('calNext').addEventListener('click', function() {
+      calMonth++;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      calDetail.classList.remove('show');
+      renderCalendar();
+      renderAgenda();
+    });
+
+    function renderAgenda() {
+      const monthPrefix = calYear + '-' + String(calMonth + 1).padStart(2, '0');
+      const items = reminderItems()
+        .filter(i => (i.deadline || '').startsWith(monthPrefix))
+        .sort((a, b) => (a.deadline || '').localeCompare(b.deadline || ''));
+
+      if (!items.length) {
+        agendaEl.innerHTML = `<div class="agenda-empty">No reminders in ${MONTHS[calMonth]}</div>`;
+        return;
+      }
+
+      const todayIso = today();
+      const byDate = {};
+      items.forEach(i => {
+        const d = i.deadline || '';
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push(i);
+      });
+
+      agendaEl.innerHTML = Object.keys(byDate).sort().map(iso => {
+        const d = new Date(iso + 'T00:00:00');
+        const isToday = iso === todayIso;
+        const itemsHtml = byDate[iso].map(i =>
+          `<div class="agenda-item" data-row-id="${i.id}"><span class="agenda-dot"></span>${esc(i.taskName || '(untitled reminder)')}</div>`
+        ).join('');
+        return `<div class="agenda-row" data-date="${iso}">
+          <div class="agenda-date${isToday ? ' is-today' : ''}"><div class="agenda-day-num">${d.getDate()}</div><div class="agenda-day-name">${DOW[d.getDay()]}</div></div>
+          <div class="agenda-items">${itemsHtml}</div>
+        </div>`;
+      }).join('');
+
+      agendaEl.querySelectorAll('.agenda-item').forEach(el => {
+        el.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const item = allItems.find(i => String(i.id) === String(this.dataset.rowId));
+          if (item) openModal(item);
+        });
+      });
+      agendaEl.querySelectorAll('.agenda-row').forEach(el => {
+        el.addEventListener('click', function() {
+          calSelectedDate = this.dataset.date;
+          showCalDetail(this.dataset.date);
+        });
+      });
+    }
+
+    function setSaveLoading(on) {
+      saveBtn.disabled = on;
+      saveLabel.innerHTML = on ? '<span class="spinner-sm"></span> Saving...' : (editingId ? 'Save Changes' : 'Save Reminder');
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const payload = editingId
+        ? { action: 'updateItem', id: editingId, type: 'Reminder' }
+        : { type: 'Reminder' };
+
+      payload.reminderName = document.getElementById('reminderName').value.trim();
+      payload.date = document.getElementById('reminderDate').value;
+
+      if (!payload.reminderName) {
+        showErr('Reminder name is required');
+        return;
+      }
+      if (!payload.date) {
+        showErr('Date is required');
+        return;
+      }
+
+      const wasEditing = Boolean(editingId);
+      setSaveLoading(true);
+      SeminyakAuth.authFetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify(payload)
+      })
+        .then(res => {
+          if (res.success) {
+            closeModal();
+            showOk(wasEditing ? 'Reminder updated' : 'Reminder added');
+            loadItems();
+          } else {
+            showErr(res.message || 'Failed to save reminder');
+          }
+        })
+        .catch(err => showErr(err.message || String(err)))
+        .finally(() => setSaveLoading(false));
+    });
+
+    function loadItems() {
+      fetch(SCRIPT_URL + '?action=getReminders')
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) throw new Error(res.message || 'Failed to load reminders');
+          allItems = res.data || [];
+          countLabel.textContent = reminderItems().length + ' item' + (reminderItems().length === 1 ? '' : 's');
+          renderCalendar();
+          renderAgenda();
+          if (calSelectedDate) showCalDetail(calSelectedDate);
+        })
+        .catch(() => {
+          calDaysEl.innerHTML = '<div class="state-box state-error"><div class="state-icon">!</div><div class="state-label">Failed to load reminders</div></div>';
+        });
+    }
+
+    loadItems();
+  </script>
+
+  <script src="sidebar-loader.js"></script>
+</body>
+</html>
