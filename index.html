@@ -143,7 +143,7 @@
       <div class="dashboard-grid">
         <div class="dashboard-column">
           <section class="dash-section">
-            <div class="section-head"><div><h2>Needs Attention</h2><p>Upcoming deadlines, reminders, and priorities</p></div><span class="section-count" id="attentionCount">-</span></div>
+            <div class="section-head"><div><h2>Reminder</h2><p>Upcoming deadlines, reminders, and priorities</p></div><span class="section-count" id="attentionCount">-</span></div>
             <div class="attention-list" id="attentionList"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
           </section>
 
@@ -160,7 +160,7 @@
           </section>
 
           <section class="dash-section">
-            <div class="section-head"><div><h2>Approval Queue</h2><p>Administration items still in progress</p></div><a class="section-link" href="administration.html">Open</a></div>
+            <div class="section-head"><div><h2>Approval</h2><p>Administration items still in progress</p></div><a class="section-link" href="administration.html">Open</a></div>
             <div class="approval-grid" id="approvalGrid"><div class="skeleton-line"></div></div>
           </section>
         </div>
@@ -204,7 +204,7 @@
     function setPageDate() {
       const now = new Date();
       const hour = now.getHours();
-      document.getElementById('greetingTitle').textContent = (hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening') + ', here is your SPP overview';
+      document.getElementById('greetingTitle').textContent = (hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening') + ', here is your overview';
       document.getElementById('dashboardDate').textContent = now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     }
 
