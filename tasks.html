@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260708-3">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body data-active-page="task" data-require-role="admin">
+  <nav class="topbar">
+    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img class="topbar-logo" src="https://cdn-5d8995b3f911c90950a6130b.closte.com/wp-content/uploads/2024/08/the-seminyak-logo-aug24v1.png" alt="The Seminyak">
+    <div class="topbar-div"></div>
+    <span class="topbar-title">Marketing Desk</span>
+    <div id="authUserBox"></div>
+    <div class="topbar-clock" id="mastClock">-</div>
+  </nav>
+
+  <div id="sidebar-container"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="body-wrap single-page">
+    <section class="right-panel">
+      <div class="board-header page-header">
+        <div class="board-title-wrap">
+          <div class="panel-eyebrow">Task List</div>
+          <h2>Tasks</h2>
+          <div class="board-sub" id="boardSubTitle">Track work by status.</div>
+        </div>
+        <div class="header-actions">
+          <span class="count-badge" id="countLabel">loading...</span>
+          <button type="button" class="btn-add" id="addNewBtn">+ Add New</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="chips" id="chipBar">
+          <button type="button" class="chip active" data-filter="All">All</button>
+          <button type="button" class="chip" data-filter="Not started">Not Started</button>
+          <button type="button" class="chip" data-filter="In progress">In Progress</button>
+          <button type="button" class="chip" data-filter="Done">Done</button>
+        </div>
+        <div class="search-wrap" id="searchWrapBox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="searchInput" type="text" placeholder="Search tasks...">
+          <button type="button" class="search-clear" id="searchClear" aria-label="Clear search">&times;</button>
+        </div>
+      </div>
+
+      <div class="board-list-wrap">
+        <div class="board">
+          <div id="list">
+            <div class="state-box">
+              <div class="state-spinner"></div>
+              <div class="state-label">Loading tasks...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="help-note">Click a task to edit.</div>
+    </section>
+  </main>
+
+  <a class="wa-float" href="https://wa.me/6281776452000" target="_blank" rel="noopener">WA Bot</a>
+
+  <div id="toastOk" class="toast toast-ok"><span class="toast-icon">✓</span><span id="toastOkMsg">Saved</span></div>
+  <div id="toastErr" class="toast toast-err"><span class="toast-icon">✕</span><span id="toastErrMsg">Something went wrong</span></div>
+
+  <div id="taskOverlay" class="overlay">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitle">Add Task</h3>
+        <button type="button" class="close-btn" id="modalClose">&times;</button>
+      </div>
+      <form id="taskForm">
+        <input type="hidden" id="taskId">
+        <div class="modal-top-actions hidden" id="taskTopActions">
+          <button type="button" class="btn-inline-danger" id="deleteTaskBtn">Delete</button>
+          <button type="button" class="btn-inline-ok" id="markDoneBtn">Mark as Done</button>
+        </div>
+        <div class="field">
+          <label for="taskName">Task Name</label>
+          <input id="taskName" type="text" placeholder="Follow up client" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="deadline">Deadline <span class="opt-tag">optional</span></label>
+          <input id="deadline" type="date">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="status">Status</label>
+            <select id="status">
+              <option value="Not started">Not started</option>
+              <option value="In progress">In progress</option>
+              <option value="Done" id="statusDoneOption">Done</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="priority">Priority</label>
+            <select id="priority">
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="note">Note <span class="opt-tag">optional</span></label>
+          <textarea id="note" placeholder="Add details if needed..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="modalCancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="saveBtn"><span id="saveLabel">Save Task</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = SUPABASE_CONFIG.TASKS_API_URL;
+    let allItems = [];
+    let activeFilter = 'All';
+    let editingId = '';
+
+    const listEl = document.getElementById('list');
+    const countLabel = document.getElementById('countLabel');
+    const overlay = document.getElementById('taskOverlay');
+    const form = document.getElementById('taskForm');
+    const saveBtn = document.getElementById('saveBtn');
+    const saveLabel = document.getElementById('saveLabel');
+    const taskTopActions = document.getElementById('taskTopActions');
+    const deleteTaskBtn = document.getElementById('deleteTaskBtn');
+    const markDoneBtn = document.getElementById('markDoneBtn');
+
+    function tickClock() {
+      const now = new Date();
+      const d = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const t = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('mastClock').innerHTML = d + '&nbsp;&nbsp;<b>' + t + '</b>';
+    }
+    tickClock();
+    setInterval(tickClock, 30000);
+
+    function showToast(id, msgId, msg, dur) {
+      const el = document.getElementById(id);
+      document.getElementById(msgId).textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), dur || 3000);
+    }
+    function showOk(msg) { showToast('toastOk', 'toastOkMsg', msg, 2600); }
+    function showErr(msg) { showToast('toastErr', 'toastErrMsg', msg, 3500); }
+    function esc(s) { return !s ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function fmtDate(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso + 'T00:00:00');
+      if (isNaN(d)) return iso;
+      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    function priorityClass(p) { return {'Low':'pill-low','Medium':'pill-medium','Urgent':'pill-urgent'}[p] || ''; }
+    function statusClass(s) {
+      return s === 'Not started' ? 'pill-not-started' : s === 'In progress' ? 'pill-in-progress' : s === 'Done' ? 'pill-done' : '';
+    }
+
+    function openModal(item) {
+      editingId = item ? String(item.id) : '';
+      document.getElementById('modalTitle').textContent = item ? 'Edit Task' : 'Add Task';
+      document.getElementById('taskId').value = editingId;
+      document.getElementById('taskName').value = item ? (item.taskName || '') : '';
+      document.getElementById('deadline').value = item ? (item.deadline || '') : '';
+      document.getElementById('status').value = item ? (item.status || 'Not started') : 'Not started';
+      document.getElementById('priority').value = item ? (item.priority || 'Low') : 'Low';
+      document.getElementById('note').value = item ? (item.note || '') : '';
+      document.getElementById('statusDoneOption').disabled = !item;
+      document.getElementById('statusDoneOption').hidden = !item;
+      taskTopActions.classList.toggle('hidden', !item);
+      markDoneBtn.disabled = item && item.status === 'Done';
+      markDoneBtn.textContent = item && item.status === 'Done' ? 'Done' : 'Mark as Done';
+      saveLabel.textContent = item ? 'Save Changes' : 'Save Task';
+      overlay.classList.add('show');
+      setTimeout(() => document.getElementById('taskName').focus(), 50);
+    }
+
+    function closeModal() {
+      overlay.classList.remove('show');
+      form.reset();
+      editingId = '';
+    }
+
+    document.getElementById('addNewBtn').addEventListener('click', () => openModal(null));
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('modalCancel').addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+    document.getElementById('chipBar').addEventListener('click', function(e) {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      activeFilter = chip.dataset.filter;
+      renderList();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+      document.getElementById('searchClear').classList.toggle('visible', this.value.length > 0);
+      renderList();
+    });
+    document.getElementById('searchClear').addEventListener('click', function() {
+      document.getElementById('searchInput').value = '';
+      this.classList.remove('visible');
+      renderList();
+    });
+
+    function renderRow(item) {
+      const isDone = item.status === 'Done';
+      let pills = '';
+      if (item.deadline) pills += '<span class="pill pill-date">' + esc(fmtDate(item.deadline)) + '</span>';
+      if (item.status) pills += '<span class="pill ' + statusClass(item.status) + '">' + esc(item.status) + '</span>';
+      if (item.priority) pills += '<span class="pill ' + priorityClass(item.priority) + '">' + esc(item.priority) + '</span>';
+
+      return `<div class="task-row ${isDone ? 'is-done' : ''}" data-type="Task List" id="row-${item.id}" data-row-id="${item.id}">
+        <div class="row-accent"></div>
+        <div class="row-inner">
+          <div class="row-top"><div class="row-title">${esc(item.taskName || '(untitled task)')}</div></div>
+          ${pills ? `<div class="row-pills">${pills}</div>` : ''}
+          ${item.note ? `<div class="row-note">${esc(item.note)}</div>` : ''}
+        </div>
+      </div>`;
+    }
+
+    function renderList() {
+      const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      let filtered = allItems.filter(i => i.type === 'Task List');
+      if (activeFilter === 'All') {
+        filtered = filtered.filter(i => (i.status || 'Not started') !== 'Done');
+      } else {
+        filtered = filtered.filter(i => (i.status || 'Not started') === activeFilter);
+      }
+      if (q) {
+        filtered = filtered.filter(i =>
+          (i.taskName || '').toLowerCase().includes(q) ||
+          (i.note || '').toLowerCase().includes(q) ||
+          (i.status || '').toLowerCase().includes(q) ||
+          (i.priority || '').toLowerCase().includes(q)
+        );
+      }
+      filtered.sort((a, b) => {
+        const doneA = a.status === 'Done' ? 1 : 0;
+        const doneB = b.status === 'Done' ? 1 : 0;
+        if (doneA !== doneB) return doneA - doneB;
+        const priorityRank = {Urgent: 0, Medium: 1, Low: 2};
+        return (priorityRank[a.priority] ?? 3) - (priorityRank[b.priority] ?? 3);
+      });
+
+      countLabel.textContent = filtered.length + ' item' + (filtered.length === 1 ? '' : 's');
+      if (!filtered.length) {
+        listEl.innerHTML = `<div class="state-box"><div class="state-icon">○</div><div class="state-label">${q ? 'No results' : 'No tasks yet'}</div></div>`;
+        return;
+      }
+      listEl.innerHTML = filtered.map(renderRow).join('');
+    }
+
+    listEl.addEventListener('click', function(e) {
+      const row = e.target.closest('.task-row');
+      if (!row) return;
+      const item = allItems.find(i => String(i.id) === String(row.dataset.rowId));
+      if (item) openModal(item);
+    });
+
+    function setSaveLoading(on) {
+      saveBtn.disabled = on;
+      saveLabel.innerHTML = on ? '<span class="spinner-sm"></span> Saving...' : (editingId ? 'Save Changes' : 'Save Task');
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const payload = editingId
+        ? { action: 'updateItem', id: editingId, type: 'Task List' }
+        : { type: 'Task List' };
+
+      payload.taskName = document.getElementById('taskName').value.trim();
+      payload.deadline = document.getElementById('deadline').value;
+      payload.status = document.getElementById('status').value;
+      payload.priority = document.getElementById('priority').value;
+      payload.note = document.getElementById('note').value.trim();
+
+      if (!payload.taskName) {
+        showErr('Task name is required');
+        return;
+      }
+
+      const wasEditing = Boolean(editingId);
+      setSaveLoading(true);
+      SeminyakAuth.authFetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify(payload)
+      })
+        .then(res => {
+          if (res.success) {
+            closeModal();
+            showOk(wasEditing ? 'Task updated' : 'Task added');
+            loadItems();
+          } else {
+            showErr(res.message || 'Failed to save task');
+          }
+        })
+        .catch(err => showErr(err.message || String(err)))
+        .finally(() => setSaveLoading(false));
+    });
+
+    markDoneBtn.addEventListener('click', function() {
+      if (!editingId) return;
+      markDone(editingId, true);
+    });
+
+    deleteTaskBtn.addEventListener('click', function() {
+      if (!editingId) return;
+      if (!confirm('Delete this task?')) return;
+      deleteTask(editingId);
+    });
+
+    function markDone(id, closeAfter) {
+      const item = allItems.find(i => String(i.id) === String(id));
+      if (!item || item.status === 'Done') return;
+      const row = document.getElementById('row-' + id);
+      if (row) row.style.opacity = '.45';
+      markDoneBtn.disabled = true;
+      markDoneBtn.textContent = 'Updating...';
+      SeminyakAuth.authFetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action: 'updateStatus', id, status: 'Done' })
+      })
+        .then(res => {
+          if (res.success) {
+            showOk('Task marked done');
+            if (closeAfter) closeModal();
+            loadItems();
+          } else {
+            showErr(res.message || 'Failed to update task');
+            if (row) row.style.opacity = '1';
+          }
+        })
+        .catch(err => {
+          showErr(err.message || String(err));
+          if (row) row.style.opacity = '1';
+        })
+        .finally(() => {
+          markDoneBtn.disabled = false;
+          markDoneBtn.textContent = 'Mark as Done';
+        });
+    }
+
+    function deleteTask(id) {
+      deleteTaskBtn.disabled = true;
+      deleteTaskBtn.textContent = 'Deleting...';
+      SeminyakAuth.authFetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: JSON.stringify({ action: 'deleteItem', id, type: 'Task List' })
+      })
+        .then(res => {
+          if (res.success) {
+            closeModal();
+            showOk('Task deleted');
+            loadItems();
+          } else {
+            showErr(res.message || 'Failed to delete task');
+          }
+        })
+        .catch(err => showErr(err.message || String(err)))
+        .finally(() => {
+          deleteTaskBtn.disabled = false;
+          deleteTaskBtn.textContent = 'Delete';
+        });
+    }
+
+    function loadItems() {
+      fetch(SCRIPT_URL + '?action=getReminders')
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) throw new Error(res.message || 'Failed to load tasks');
+          allItems = res.data || [];
+          renderList();
+        })
+        .catch(() => {
+          listEl.innerHTML = '<div class="state-box state-error"><div class="state-icon">!</div><div class="state-label">Failed to load tasks</div></div>';
+        });
+    }
+
+    loadItems();
+  </script>
+
+  <script src="sidebar-loader.js?v=20260712-1"></script>
+</body>
+</html>
