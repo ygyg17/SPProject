@@ -1,25 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <base target="_top">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - The Seminyak</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260708-2">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260708-3">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
-</head>
+  <style>
+    .dashboard-shell { max-width: 1440px; margin: 0 auto; padding: 32px 28px 64px; }
+    .dashboard-head { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:24px; }
+    .dashboard-head h1 { font-size:24px; line-height:1.2; margin:0; color:var(--ink); }
+    .dashboard-head .board-sub { margin-top:6px; font-size:13px; color:var(--muted); }
+    .dashboard-actions { display:flex; align-items:center; gap:12px; }
+    .last-updated { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+    .refresh-btn { width:36px; height:36px; display:grid; place-items:center; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink-2); cursor:pointer; font-size:18px; line-height:1; transition:.15s ease; }
+    .refresh-btn:hover { border-color:var(--gold); color:var(--gold); }
+    .refresh-btn.loading { animation:spin .8s linear infinite; pointer-events:none; }
 
-<body data-active-page="task" data-require-role="admin">
+    .load-notice { display:none; margin-bottom:16px; padding:10px 13px; border:1px solid #fde68a; background:var(--warn-bg); color:var(--warn); border-radius:8px; font-size:12px; }
+    .load-notice.show { display:block; }
+    .metric-grid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; margin-bottom:22px; }
+    .metric-card { min-height:132px; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:18px; display:flex; flex-direction:column; text-decoration:none; transition:border-color .15s, transform .15s; }
+    .metric-card:hover { border-color:var(--line-2); transform:translateY(-1px); }
+    .metric-top { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .metric-label { font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+    .metric-dot { width:8px; height:8px; border-radius:50%; background:var(--line-2); }
+    .metric-dot.gold { background:var(--gold); } .metric-dot.warn { background:var(--warn); }
+    .metric-dot.red { background:var(--urgent); } .metric-dot.green { background:var(--ok); }
+    .metric-value { margin-top:13px; font-family:'JetBrains Mono', monospace; font-size:30px; line-height:1; font-weight:700; color:var(--ink); }
+    .metric-foot { margin-top:auto; padding-top:10px; font-size:11.5px; color:var(--muted); line-height:1.35; }
+
+    .dashboard-grid { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr); gap:18px; align-items:start; }
+    .dashboard-column { display:flex; flex-direction:column; gap:18px; min-width:0; }
+    .dash-section { background:var(--surface); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+    .section-head { min-height:58px; padding:14px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .section-head h2 { font-size:14px; line-height:1.3; color:var(--ink); }
+    .section-head p { margin-top:3px; font-size:11.5px; color:var(--muted); }
+    .section-link { flex-shrink:0; color:var(--gold); font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; text-decoration:none; }
+    .section-link:hover { text-decoration:underline; }
+    .section-count { min-width:25px; height:25px; padding:0 8px; border-radius:13px; display:grid; place-items:center; background:var(--gold-dim); color:var(--gold); font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:700; }
+
+    .attention-list, .proposal-list { min-height:120px; }
+    .attention-row { display:grid; grid-template-columns:10px minmax(0,1fr) auto; gap:12px; align-items:center; padding:13px 18px; border-bottom:1px solid var(--line); text-decoration:none; transition:background .12s; }
+    .attention-row:last-child { border-bottom:0; }
+    .attention-row:hover { background:var(--bg); }
+    .attention-mark { width:7px; height:7px; border-radius:50%; background:var(--gold); }
+    .attention-mark.urgent { background:var(--urgent); } .attention-mark.ok { background:var(--ok); }
+    .attention-title { color:var(--ink); font-size:13px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+    .attention-meta { margin-top:3px; color:var(--muted); font-size:11px; line-height:1.4; }
+    .attention-time { text-align:right; font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--muted); white-space:nowrap; }
+
+    .progress-list { padding:4px 18px 8px; }
+    .progress-row { padding:13px 0; border-bottom:1px solid var(--line); }
+    .progress-row:last-child { border-bottom:0; }
+    .progress-meta { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px; }
+    .progress-name { font-size:12.5px; font-weight:600; color:var(--ink-2); }
+    .progress-count { font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--muted); }
+    .progress-track { height:5px; border-radius:3px; background:var(--info-bg); overflow:hidden; }
+    .progress-fill { height:100%; width:0; background:var(--ok); border-radius:3px; transition:width .35s ease; }
+
+    .approval-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .approval-cell { min-height:92px; padding:16px 18px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .approval-cell:nth-child(2n) { border-right:0; }
+    .approval-cell:nth-last-child(-n+2) { border-bottom:0; }
+    .approval-name { font-size:11.5px; color:var(--muted); }
+    .approval-value { margin-top:7px; font-family:'JetBrains Mono', monospace; font-size:23px; font-weight:700; color:var(--ink); }
+    .approval-value.has-items { color:var(--warn); }
+
+    .proposal-row { padding:14px 18px; border-bottom:1px solid var(--line); }
+    .proposal-row:last-child { border-bottom:0; }
+    .proposal-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .proposal-name { font-size:13px; font-weight:600; color:var(--ink); line-height:1.4; overflow-wrap:anywhere; }
+    .mini-status { flex-shrink:0; padding:3px 7px; border-radius:4px; background:var(--gold-dim); color:var(--gold); font-family:'JetBrains Mono', monospace; font-size:9px; font-weight:700; text-transform:uppercase; }
+    .proposal-stages { display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:8px; color:var(--muted); font-size:10.5px; }
+    .proposal-stages span::before { content:''; display:inline-block; width:5px; height:5px; margin-right:5px; border-radius:50%; background:var(--line-2); vertical-align:1px; }
+    .proposal-stages span.done::before { background:var(--ok); }
+    .proposal-stages span.pending::before { background:var(--warn); }
+
+    .empty-state { padding:34px 20px; text-align:center; color:var(--muted); font-size:12px; line-height:1.5; }
+    .empty-state strong { display:block; margin-bottom:4px; color:var(--ink-2); font-size:13px; }
+    .skeleton-line { height:10px; margin:15px 18px; border-radius:4px; background:linear-gradient(90deg,var(--info-bg),var(--line),var(--info-bg)); background-size:200% 100%; animation:shimmer 1.2s infinite; }
+    @keyframes shimmer { to { background-position:-200% 0; } }
+
+    @media (max-width:1180px) { .metric-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+    @media (max-width:900px) { .dashboard-grid { grid-template-columns:1fr; } }
+    @media (max-width:620px) {
+      .dashboard-shell { padding:24px 16px 48px; }
+      .dashboard-head { align-items:flex-start; }
+      .dashboard-actions { flex-direction:column-reverse; align-items:flex-end; }
+      .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .metric-card { min-height:122px; padding:15px; }
+      .metric-value { font-size:26px; }
+      .attention-row { grid-template-columns:9px minmax(0,1fr); }
+      .attention-time { grid-column:2; text-align:left; }
+    }
+    @media (max-width:390px) { .metric-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body data-active-page="dashboard" data-require-role="admin,staff">
   <nav class="topbar">
     <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Open menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <img class="topbar-logo" src="https://cdn-5d8995b3f911c90950a6130b.closte.com/wp-content/uploads/2024/08/the-seminyak-logo-aug24v1.png" alt="The Seminyak">
     <div class="topbar-div"></div>
-    <span class="topbar-title">Marketing Desk</span>
+    <span class="topbar-title">Dashboard</span>
     <div id="authUserBox"></div>
     <div class="topbar-clock" id="mastClock">-</div>
   </nav>
@@ -28,380 +117,216 @@
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <main class="body-wrap single-page">
-    <section class="right-panel">
-      <div class="board-header page-header">
-        <div class="board-title-wrap">
-          <div class="panel-eyebrow">Task List</div>
-          <h2>Tasks</h2>
-          <div class="board-sub" id="boardSubTitle">Track work by status.</div>
+    <div class="dashboard-shell">
+      <header class="dashboard-head">
+        <div>
+          <div class="panel-eyebrow">Marketing Desk</div>
+          <h1 id="greetingTitle">Operational Overview</h1>
+          <div class="board-sub" id="dashboardDate">Loading the latest overview...</div>
         </div>
-        <div class="header-actions">
-          <span class="count-badge" id="countLabel">loading...</span>
-          <button type="button" class="btn-add" id="addNewBtn">+ Add New</button>
+        <div class="dashboard-actions">
+          <span class="last-updated" id="lastUpdated">Not updated yet</span>
+          <button type="button" class="refresh-btn" id="refreshBtn" aria-label="Refresh dashboard" title="Refresh dashboard">↻</button>
+        </div>
+      </header>
+
+      <div class="load-notice" id="loadNotice"></div>
+
+      <section class="metric-grid" aria-label="Main overview">
+        <a class="metric-card" href="tasks.html"><div class="metric-top"><span class="metric-label">Active Tasks</span><span class="metric-dot gold"></span></div><strong class="metric-value" id="metricTasks">-</strong><span class="metric-foot" id="metricTasksFoot">Loading task data</span></a>
+        <a class="metric-card" href="reminder.html"><div class="metric-top"><span class="metric-label">Due Now</span><span class="metric-dot red"></span></div><strong class="metric-value" id="metricDue">-</strong><span class="metric-foot" id="metricDueFoot">Due today and overdue</span></a>
+        <a class="metric-card" href="design.html"><div class="metric-top"><span class="metric-label">Pending Designs</span><span class="metric-dot warn"></span></div><strong class="metric-value" id="metricDesign">-</strong><span class="metric-foot" id="metricDesignFoot">Waiting to be completed</span></a>
+        <a class="metric-card" href="proposal.html"><div class="metric-top"><span class="metric-label">Open Proposals</span><span class="metric-dot gold"></span></div><strong class="metric-value" id="metricProposal">-</strong><span class="metric-foot" id="metricProposalFoot">Not completed yet</span></a>
+        <a class="metric-card" href="administration.html"><div class="metric-top"><span class="metric-label">Administration</span><span class="metric-dot green"></span></div><strong class="metric-value" id="metricAdmin">-</strong><span class="metric-foot" id="metricAdminFoot">Currently in progress</span></a>
+      </section>
+
+      <div class="dashboard-grid">
+        <div class="dashboard-column">
+          <section class="dash-section">
+            <div class="section-head"><div><h2>Reminder</h2><p>Upcoming deadlines, reminders, and priorities</p></div><span class="section-count" id="attentionCount">-</span></div>
+            <div class="attention-list" id="attentionList"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          </section>
+
+          <section class="dash-section">
+            <div class="section-head"><div><h2>Latest Proposals</h2><p>Document and payment stages still in progress</p></div><a class="section-link" href="proposal.html">View all</a></div>
+            <div class="proposal-list" id="proposalList"><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          </section>
+        </div>
+
+        <div class="dashboard-column">
+          <section class="dash-section">
+            <div class="section-head"><div><h2>Overall Progress</h2><p>Percentage of completed items</p></div></div>
+            <div class="progress-list" id="progressList"><div class="skeleton-line"></div><div class="skeleton-line"></div><div class="skeleton-line"></div></div>
+          </section>
+
+          <section class="dash-section">
+            <div class="section-head"><div><h2>Approval</h2><p>Administration items still in progress</p></div><a class="section-link" href="administration.html">Open</a></div>
+            <div class="approval-grid" id="approvalGrid"><div class="skeleton-line"></div></div>
+          </section>
         </div>
       </div>
-
-      <div class="filter-bar">
-        <div class="chips" id="chipBar">
-          <button type="button" class="chip active" data-filter="All">All</button>
-          <button type="button" class="chip" data-filter="Not started">Not Started</button>
-          <button type="button" class="chip" data-filter="In progress">In Progress</button>
-          <button type="button" class="chip" data-filter="Done">Done</button>
-        </div>
-        <div class="search-wrap" id="searchWrapBox">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input id="searchInput" type="text" placeholder="Search tasks...">
-          <button type="button" class="search-clear" id="searchClear" aria-label="Clear search">&times;</button>
-        </div>
-      </div>
-
-      <div class="board-list-wrap">
-        <div class="board">
-          <div id="list">
-            <div class="state-box">
-              <div class="state-spinner"></div>
-              <div class="state-label">Loading tasks...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="help-note">Click a task to edit.</div>
-    </section>
+    </div>
   </main>
 
-  <a class="wa-float" href="https://wa.me/6281776452000" target="_blank" rel="noopener">WA Bot</a>
-
-  <div id="toastOk" class="toast toast-ok"><span class="toast-icon">✓</span><span id="toastOkMsg">Saved</span></div>
-  <div id="toastErr" class="toast toast-err"><span class="toast-icon">✕</span><span id="toastErrMsg">Something went wrong</span></div>
-
-  <div id="taskOverlay" class="overlay">
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3 id="modalTitle">Add Task</h3>
-        <button type="button" class="close-btn" id="modalClose">&times;</button>
-      </div>
-      <form id="taskForm">
-        <input type="hidden" id="taskId">
-        <div class="modal-top-actions hidden" id="taskTopActions">
-          <button type="button" class="btn-inline-danger" id="deleteTaskBtn">Delete</button>
-          <button type="button" class="btn-inline-ok" id="markDoneBtn">Mark as Done</button>
-        </div>
-        <div class="field">
-          <label for="taskName">Task Name</label>
-          <input id="taskName" type="text" placeholder="Follow up client" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="deadline">Deadline <span class="opt-tag">optional</span></label>
-          <input id="deadline" type="date">
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label for="status">Status</label>
-            <select id="status">
-              <option value="Not started">Not started</option>
-              <option value="In progress">In progress</option>
-              <option value="Done" id="statusDoneOption">Done</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="priority">Priority</label>
-            <select id="priority">
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="Urgent">Urgent</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="note">Note <span class="opt-tag">optional</span></label>
-          <textarea id="note" placeholder="Add details if needed..."></textarea>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" id="modalCancel">Cancel</button>
-          <button type="submit" class="btn-primary" id="saveBtn"><span id="saveLabel">Save Task</span></button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <script>
-    const SCRIPT_URL = SUPABASE_CONFIG.TASKS_API_URL;
-    let allItems = [];
-    let activeFilter = 'All';
-    let editingId = '';
+    const dashboardDb = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
+    const dashboardState = { tasks:[], designs:[], proposals:[], administration:[] };
+    const sourceErrors = [];
 
-    const listEl = document.getElementById('list');
-    const countLabel = document.getElementById('countLabel');
-    const overlay = document.getElementById('taskOverlay');
-    const form = document.getElementById('taskForm');
-    const saveBtn = document.getElementById('saveBtn');
-    const saveLabel = document.getElementById('saveLabel');
-    const taskTopActions = document.getElementById('taskTopActions');
-    const deleteTaskBtn = document.getElementById('deleteTaskBtn');
-    const markDoneBtn = document.getElementById('markDoneBtn');
-
+    function esc(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function status(value) { return String(value || '').trim().toLowerCase(); }
+    function asDate(value) {
+      if (!value) return null;
+      const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      const date = match ? new Date(Number(match[1]), Number(match[2])-1, Number(match[3])) : new Date(value);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    function dayStart(date) { const d = new Date(date); d.setHours(0,0,0,0); return d; }
+    function fmtDate(value) {
+      const date = asDate(value);
+      return date ? date.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+    }
+    function dateLabel(value) {
+      const date = asDate(value);
+      if (!date) return 'No deadline';
+      const diff = Math.round((dayStart(date) - dayStart(new Date())) / 86400000);
+      if (diff < 0) return Math.abs(diff) + ' day' + (Math.abs(diff) === 1 ? '' : 's') + ' overdue';
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Tomorrow';
+      return fmtDate(value);
+    }
     function tickClock() {
       const now = new Date();
-      const d = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-      const t = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-      document.getElementById('mastClock').innerHTML = d + '&nbsp;&nbsp;<b>' + t + '</b>';
+      document.getElementById('mastClock').innerHTML = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) + '&nbsp;&nbsp;<b>' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) + '</b>';
     }
-    tickClock();
-    setInterval(tickClock, 30000);
-
-    function showToast(id, msgId, msg, dur) {
-      const el = document.getElementById(id);
-      document.getElementById(msgId).textContent = msg;
-      el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), dur || 3000);
-    }
-    function showOk(msg) { showToast('toastOk', 'toastOkMsg', msg, 2600); }
-    function showErr(msg) { showToast('toastErr', 'toastErrMsg', msg, 3500); }
-    function esc(s) { return !s ? '' : String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-    function fmtDate(iso) {
-      if (!iso) return '-';
-      const d = new Date(iso + 'T00:00:00');
-      if (isNaN(d)) return iso;
-      return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    }
-    function priorityClass(p) { return {'Low':'pill-low','Medium':'pill-medium','Urgent':'pill-urgent'}[p] || ''; }
-    function statusClass(s) {
-      return s === 'Not started' ? 'pill-not-started' : s === 'In progress' ? 'pill-in-progress' : s === 'Done' ? 'pill-done' : '';
+    function setPageDate() {
+      const now = new Date();
+      const hour = now.getHours();
+      document.getElementById('greetingTitle').textContent = (hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening') + ', here is your overview';
+      document.getElementById('dashboardDate').textContent = now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     }
 
-    function openModal(item) {
-      editingId = item ? String(item.id) : '';
-      document.getElementById('modalTitle').textContent = item ? 'Edit Task' : 'Add Task';
-      document.getElementById('taskId').value = editingId;
-      document.getElementById('taskName').value = item ? (item.taskName || '') : '';
-      document.getElementById('deadline').value = item ? (item.deadline || '') : '';
-      document.getElementById('status').value = item ? (item.status || 'Not started') : 'Not started';
-      document.getElementById('priority').value = item ? (item.priority || 'Low') : 'Low';
-      document.getElementById('note').value = item ? (item.note || '') : '';
-      document.getElementById('statusDoneOption').disabled = !item;
-      document.getElementById('statusDoneOption').hidden = !item;
-      taskTopActions.classList.toggle('hidden', !item);
-      markDoneBtn.disabled = item && item.status === 'Done';
-      markDoneBtn.textContent = item && item.status === 'Done' ? 'Done' : 'Mark as Done';
-      saveLabel.textContent = item ? 'Save Changes' : 'Save Task';
-      overlay.classList.add('show');
-      setTimeout(() => document.getElementById('taskName').focus(), 50);
+    async function dashboardFetch(url, options) {
+      const session = await SeminyakAuth.getSession();
+      const requestOptions = Object.assign({}, options || {});
+      requestOptions.headers = Object.assign({}, requestOptions.headers || {});
+      if (session) requestOptions.headers.Authorization = 'Bearer ' + session.access_token;
+      const response = await fetch(url, requestOptions);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.authError || data.forbidden) throw new Error(data.error || data.message || 'Access unavailable');
+      return data;
     }
 
-    function closeModal() {
-      overlay.classList.remove('show');
-      form.reset();
-      editingId = '';
+    async function fetchTasks() {
+      const res = await dashboardFetch(SUPABASE_CONFIG.TASKS_API_URL + '?action=getReminders');
+      if (!res.success) throw new Error(res.message || 'Tasks could not be loaded');
+      return res.data || [];
+    }
+    async function fetchDesigns() {
+      const url = SUPABASE_CONFIG.DESIGN_API_URL || (SUPABASE_CONFIG.URL + '/functions/v1/design-request-api');
+      const data = await dashboardFetch(url + '?action=getRequests');
+      return Array.isArray(data) ? data : [];
+    }
+    async function fetchProposals() {
+      const result = await dashboardDb.from('proposals').select('*').order('date_propose',{ascending:false});
+      if (result.error) throw result.error;
+      return result.data || [];
+    }
+    async function fetchAdministration() {
+      const data = await dashboardFetch(CONFIG.ADMIN_GAS_WEB_APP_URL,{method:'GET'});
+      if (!data.ok) throw new Error(data.error || 'Administration could not be loaded');
+      return data.items || [];
     }
 
-    document.getElementById('addNewBtn').addEventListener('click', () => openModal(null));
-    document.getElementById('modalClose').addEventListener('click', closeModal);
-    document.getElementById('modalCancel').addEventListener('click', closeModal);
-    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    function renderMetrics() {
+      const taskItems = dashboardState.tasks.filter(item => item.type === 'Task List');
+      const activeTasks = taskItems.filter(item => status(item.status) !== 'done');
+      const reminders = dashboardState.tasks.filter(item => item.type === 'Reminder');
+      const today = dayStart(new Date());
+      const overdueTasks = activeTasks.filter(item => { const d=asDate(item.deadline); return d && dayStart(d) <= today; });
+      const dueReminders = reminders.filter(item => { const d=asDate(item.deadline); return d && dayStart(d) <= today; });
+      const pendingDesigns = dashboardState.designs.filter(item => status(item.status) !== 'done');
+      const openProposals = dashboardState.proposals.filter(item => !['done','cancel','cancelled'].includes(status(item.proposal_status)));
+      const activeAdmin = dashboardState.administration.filter(item => status(item.status) === 'in progress');
 
-    document.getElementById('chipBar').addEventListener('click', function(e) {
-      const chip = e.target.closest('.chip');
-      if (!chip) return;
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      chip.classList.add('active');
-      activeFilter = chip.dataset.filter;
-      renderList();
-    });
-
-    document.getElementById('searchInput').addEventListener('input', function() {
-      document.getElementById('searchClear').classList.toggle('visible', this.value.length > 0);
-      renderList();
-    });
-    document.getElementById('searchClear').addEventListener('click', function() {
-      document.getElementById('searchInput').value = '';
-      this.classList.remove('visible');
-      renderList();
-    });
-
-    function renderRow(item) {
-      const isDone = item.status === 'Done';
-      let pills = '';
-      if (item.deadline) pills += '<span class="pill pill-date">' + esc(fmtDate(item.deadline)) + '</span>';
-      if (item.status) pills += '<span class="pill ' + statusClass(item.status) + '">' + esc(item.status) + '</span>';
-      if (item.priority) pills += '<span class="pill ' + priorityClass(item.priority) + '">' + esc(item.priority) + '</span>';
-
-      return `<div class="task-row ${isDone ? 'is-done' : ''}" data-type="Task List" id="row-${item.id}" data-row-id="${item.id}">
-        <div class="row-accent"></div>
-        <div class="row-inner">
-          <div class="row-top"><div class="row-title">${esc(item.taskName || '(untitled task)')}</div></div>
-          ${pills ? `<div class="row-pills">${pills}</div>` : ''}
-          ${item.note ? `<div class="row-note">${esc(item.note)}</div>` : ''}
-        </div>
-      </div>`;
+      document.getElementById('metricTasks').textContent = activeTasks.length;
+      document.getElementById('metricTasksFoot').textContent = activeTasks.filter(item => status(item.priority) === 'urgent').length + ' urgent priority';
+      document.getElementById('metricDue').textContent = overdueTasks.length + dueReminders.length;
+      document.getElementById('metricDueFoot').textContent = overdueTasks.length + ' task' + (overdueTasks.length === 1 ? '' : 's') + ' · ' + dueReminders.length + ' reminder' + (dueReminders.length === 1 ? '' : 's');
+      document.getElementById('metricDesign').textContent = pendingDesigns.length;
+      document.getElementById('metricDesignFoot').textContent = dashboardState.designs.length + ' total request' + (dashboardState.designs.length === 1 ? '' : 's');
+      document.getElementById('metricProposal').textContent = openProposals.length;
+      document.getElementById('metricProposalFoot').textContent = dashboardState.proposals.length + ' total proposal' + (dashboardState.proposals.length === 1 ? '' : 's');
+      document.getElementById('metricAdmin').textContent = activeAdmin.length;
+      document.getElementById('metricAdminFoot').textContent = dashboardState.administration.length + ' total document' + (dashboardState.administration.length === 1 ? '' : 's');
     }
 
-    function renderList() {
-      const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-      let filtered = allItems.filter(i => i.type === 'Task List');
-      if (activeFilter === 'All') {
-        filtered = filtered.filter(i => (i.status || 'Not started') !== 'Done');
-      } else {
-        filtered = filtered.filter(i => (i.status || 'Not started') === activeFilter);
-      }
-      if (q) {
-        filtered = filtered.filter(i =>
-          (i.taskName || '').toLowerCase().includes(q) ||
-          (i.note || '').toLowerCase().includes(q) ||
-          (i.status || '').toLowerCase().includes(q) ||
-          (i.priority || '').toLowerCase().includes(q)
-        );
-      }
-      filtered.sort((a, b) => {
-        const doneA = a.status === 'Done' ? 1 : 0;
-        const doneB = b.status === 'Done' ? 1 : 0;
-        if (doneA !== doneB) return doneA - doneB;
-        const priorityRank = {Urgent: 0, Medium: 1, Low: 2};
-        return (priorityRank[a.priority] ?? 3) - (priorityRank[b.priority] ?? 3);
+    function renderAttention() {
+      const today = dayStart(new Date());
+      const nextWeek = new Date(today); nextWeek.setDate(nextWeek.getDate()+7);
+      const items = [];
+      dashboardState.tasks.filter(i => i.type === 'Task List' && status(i.status) !== 'done').forEach(item => {
+        const due = asDate(item.deadline); const urgent = status(item.priority) === 'urgent';
+        if (urgent || (due && dayStart(due) <= nextWeek)) items.push({ title:item.taskName || 'Untitled task', meta:'Task · ' + (item.priority || 'Normal'), date:item.deadline, href:'tasks.html', severity:due && dayStart(due)<today ? 0 : urgent ? 1 : 2 });
       });
-
-      countLabel.textContent = filtered.length + ' item' + (filtered.length === 1 ? '' : 's');
-      if (!filtered.length) {
-        listEl.innerHTML = `<div class="state-box"><div class="state-icon">○</div><div class="state-label">${q ? 'No results' : 'No tasks yet'}</div></div>`;
-        return;
-      }
-      listEl.innerHTML = filtered.map(renderRow).join('');
+      dashboardState.tasks.filter(i => i.type === 'Reminder').forEach(item => {
+        const due=asDate(item.deadline);
+        if (due && dayStart(due) <= nextWeek && dayStart(due) >= today) items.push({ title:item.taskName || 'Reminder', meta:'Reminder', date:item.deadline, href:'reminder.html', severity:dayStart(due)<=today ? 1 : 2 });
+      });
+      dashboardState.designs.filter(i => status(i.status) !== 'done').forEach(item => {
+        const due=asDate(item.deadline);
+        if (due && dayStart(due) <= nextWeek) items.push({ title:item.name || 'Design request', meta:'Design · ' + (item.department || 'No department'), date:item.deadline, href:'design.html', severity:dayStart(due)<today ? 0 : 2 });
+      });
+      items.sort((a,b) => a.severity-b.severity || ((asDate(a.date)||new Date(8640000000000000))-(asDate(b.date)||new Date(8640000000000000))));
+      const visible=items.slice(0,8);
+      document.getElementById('attentionCount').textContent=items.length;
+      document.getElementById('attentionList').innerHTML = visible.length ? visible.map(item => '<a class="attention-row" href="'+item.href+'"><span class="attention-mark '+(item.severity===0?'urgent':item.severity===2?'ok':'')+'"></span><div><div class="attention-title">'+esc(item.title)+'</div><div class="attention-meta">'+esc(item.meta)+'</div></div><span class="attention-time">'+esc(dateLabel(item.date))+'</span></a>').join('') : '<div class="empty-state"><strong>No urgent items</strong>All deadlines for the next seven days look clear.</div>';
     }
 
-    listEl.addEventListener('click', function(e) {
-      const row = e.target.closest('.task-row');
-      if (!row) return;
-      const item = allItems.find(i => String(i.id) === String(row.dataset.rowId));
-      if (item) openModal(item);
-    });
-
-    function setSaveLoading(on) {
-      saveBtn.disabled = on;
-      saveLabel.innerHTML = on ? '<span class="spinner-sm"></span> Saving...' : (editingId ? 'Save Changes' : 'Save Task');
+    function renderProgress() {
+      const taskItems=dashboardState.tasks.filter(i=>i.type==='Task List');
+      const groups=[
+        {name:'Tasks', total:taskItems.length, done:taskItems.filter(i=>status(i.status)==='done').length},
+        {name:'Design Request', total:dashboardState.designs.length, done:dashboardState.designs.filter(i=>status(i.status)==='done').length},
+        {name:'Proposal', total:dashboardState.proposals.length, done:dashboardState.proposals.filter(i=>['done','cancel','cancelled'].includes(status(i.proposal_status))).length},
+        {name:'Administration', total:dashboardState.administration.length, done:dashboardState.administration.filter(i=>status(i.status)==='done').length}
+      ];
+      document.getElementById('progressList').innerHTML=groups.map(group=>{const pct=group.total?Math.round(group.done/group.total*100):0;return '<div class="progress-row"><div class="progress-meta"><span class="progress-name">'+group.name+'</span><span class="progress-count">'+group.done+' / '+group.total+' completed</span></div><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%"></div></div></div>';}).join('');
     }
 
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const payload = editingId
-        ? { action: 'updateItem', id: editingId, type: 'Task List' }
-        : { type: 'Task List' };
-
-      payload.taskName = document.getElementById('taskName').value.trim();
-      payload.deadline = document.getElementById('deadline').value;
-      payload.status = document.getElementById('status').value;
-      payload.priority = document.getElementById('priority').value;
-      payload.note = document.getElementById('note').value.trim();
-
-      if (!payload.taskName) {
-        showErr('Task name is required');
-        return;
-      }
-
-      const wasEditing = Boolean(editingId);
-      setSaveLoading(true);
-      SeminyakAuth.authFetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {'Content-Type': 'text/plain;charset=utf-8'},
-        body: JSON.stringify(payload)
-      })
-        .then(res => {
-          if (res.success) {
-            closeModal();
-            showOk(wasEditing ? 'Task updated' : 'Task added');
-            loadItems();
-          } else {
-            showErr(res.message || 'Failed to save task');
-          }
-        })
-        .catch(err => showErr(err.message || String(err)))
-        .finally(() => setSaveLoading(false));
-    });
-
-    markDoneBtn.addEventListener('click', function() {
-      if (!editingId) return;
-      markDone(editingId, true);
-    });
-
-    deleteTaskBtn.addEventListener('click', function() {
-      if (!editingId) return;
-      if (!confirm('Delete this task?')) return;
-      deleteTask(editingId);
-    });
-
-    function markDone(id, closeAfter) {
-      const item = allItems.find(i => String(i.id) === String(id));
-      if (!item || item.status === 'Done') return;
-      const row = document.getElementById('row-' + id);
-      if (row) row.style.opacity = '.45';
-      markDoneBtn.disabled = true;
-      markDoneBtn.textContent = 'Updating...';
-      SeminyakAuth.authFetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {'Content-Type': 'text/plain;charset=utf-8'},
-        body: JSON.stringify({ action: 'updateStatus', id, status: 'Done' })
-      })
-        .then(res => {
-          if (res.success) {
-            showOk('Task marked done');
-            if (closeAfter) closeModal();
-            loadItems();
-          } else {
-            showErr(res.message || 'Failed to update task');
-            if (row) row.style.opacity = '1';
-          }
-        })
-        .catch(err => {
-          showErr(err.message || String(err));
-          if (row) row.style.opacity = '1';
-        })
-        .finally(() => {
-          markDoneBtn.disabled = false;
-          markDoneBtn.textContent = 'Mark as Done';
-        });
+    function stageClass(value, doneValues) { return doneValues.includes(status(value)) ? 'done' : 'pending'; }
+    function renderProposals() {
+      const open=dashboardState.proposals.filter(i=>!['done','cancel','cancelled'].includes(status(i.proposal_status))).slice(0,5);
+      document.getElementById('proposalList').innerHTML=open.length?open.map(item=>'<div class="proposal-row"><div class="proposal-top"><div><div class="proposal-name">'+esc(item.name||'Untitled proposal')+'</div><div class="attention-meta">'+esc(fmtDate(item.date_propose))+'</div></div><span class="mini-status">'+esc(item.proposal_status||'Not started')+'</span></div><div class="proposal-stages"><span class="'+stageClass(item.purchase_request,['done','done gm'])+'">PR</span><span class="'+stageClass(item.vendor_form,['done','done purchasing','not required'])+'">Vendor</span><span class="'+stageClass(item.payment,['done'])+'">Payment</span><span class="'+((Array.isArray(item.files)&&item.files.length)||(item.files&&String(item.files).length)?'done':'pending')+'">File</span></div></div>').join(''):'<div class="empty-state"><strong>No open proposals</strong>All proposals have been completed or cancelled.</div>';
     }
 
-    function deleteTask(id) {
-      deleteTaskBtn.disabled = true;
-      deleteTaskBtn.textContent = 'Deleting...';
-      SeminyakAuth.authFetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: {'Content-Type': 'text/plain;charset=utf-8'},
-        body: JSON.stringify({ action: 'deleteItem', id, type: 'Task List' })
-      })
-        .then(res => {
-          if (res.success) {
-            closeModal();
-            showOk('Task deleted');
-            loadItems();
-          } else {
-            showErr(res.message || 'Failed to delete task');
-          }
-        })
-        .catch(err => showErr(err.message || String(err)))
-        .finally(() => {
-          deleteTaskBtn.disabled = false;
-          deleteTaskBtn.textContent = 'Delete';
-        });
+    function renderApprovals() {
+      const active=dashboardState.administration.filter(i=>status(i.status)==='in progress');
+      const names=['DOF','GM','Director','Purchasing'];
+      document.getElementById('approvalGrid').innerHTML=names.map(name=>{const count=active.filter(i=>status(i.sign)===status(name)).length;return '<div class="approval-cell"><div class="approval-name">'+name+'</div><div class="approval-value '+(count?'has-items':'')+'">'+count+'</div></div>';}).join('');
     }
 
-    function loadItems() {
-      fetch(SCRIPT_URL + '?action=getReminders')
-        .then(r => r.json())
-        .then(res => {
-          if (!res.success) throw new Error(res.message || 'Failed to load tasks');
-          allItems = res.data || [];
-          renderList();
-        })
-        .catch(() => {
-          listEl.innerHTML = '<div class="state-box state-error"><div class="state-icon">!</div><div class="state-label">Failed to load tasks</div></div>';
-        });
+    function renderAll() { renderMetrics(); renderAttention(); renderProgress(); renderProposals(); renderApprovals(); }
+
+    async function loadDashboard() {
+      const button=document.getElementById('refreshBtn'); button.classList.add('loading'); sourceErrors.length=0;
+      const results=await Promise.allSettled([fetchTasks(),fetchDesigns(),fetchProposals(),fetchAdministration()]);
+      const keys=['tasks','designs','proposals','administration'];
+      const labels=['Tasks','Design','Proposal','Administration'];
+      results.forEach((result,index)=>{ if(result.status==='fulfilled') dashboardState[keys[index]]=result.value; else sourceErrors.push(labels[index]); });
+      renderAll();
+      const notice=document.getElementById('loadNotice');
+      if(sourceErrors.length){notice.textContent='Some data could not be loaded: '+sourceErrors.join(', ')+'. Please refresh to try again.';notice.classList.add('show');}else{notice.classList.remove('show');}
+      document.getElementById('lastUpdated').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      button.classList.remove('loading');
     }
 
-    loadItems();
+    tickClock(); setInterval(tickClock,30000); setPageDate();
+    document.getElementById('refreshBtn').addEventListener('click',loadDashboard);
+    window.onAuthReady=function(){loadDashboard();};
   </script>
-
-  <script src="sidebar-loader.js?v=20260708-2"></script>
+  <script src="sidebar-loader.js?v=20260712-1"></script>
 </body>
 </html>
