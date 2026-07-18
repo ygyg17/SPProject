@@ -454,7 +454,6 @@
   document.getElementById('openAddBtn').addEventListener('click', openAdd);
   document.getElementById('formCloseBtn').addEventListener('click', closeForm);
   document.getElementById('formCancelBtn').addEventListener('click', closeForm);
-  formOverlay.addEventListener('click', function (e) { if (e.target === formOverlay) closeForm(); });
 
   const fileDrop = document.getElementById('fileDrop');
   const fileInput = document.getElementById('f-file');
@@ -718,7 +717,6 @@
   document.getElementById('openPdfBtn').addEventListener('click', openPdfModal);
   document.getElementById('pdfCloseBtn').addEventListener('click', closePdfModal);
   document.getElementById('pdfCancelBtn').addEventListener('click', closePdfModal);
-  pdfOverlay.addEventListener('click', function (e) { if (e.target === pdfOverlay) closePdfModal(); });
 
   pdfImageDrop.addEventListener('click', function () { pdfImageInput.click(); });
   pdfImageDrop.addEventListener('dragover', function (e) {
