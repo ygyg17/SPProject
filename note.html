@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="styles.css?v=20260721-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
-  <script src="auth.js"></script>
+  <script src="auth.js?v=20260721-2"></script>
   <style>
     .notes-page { min-height: calc(100vh - 52px); padding: 22px; background: var(--bg); }
     .notes-app { height: calc(100vh - 96px); min-height: 600px; display: grid; grid-template-columns: 300px minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 32px rgba(28,25,23,.045); }
@@ -276,8 +276,14 @@
       var notes = [];
       var selectedId = '';
       var activeView = 'all';
-      var storageKey = '';
+      var supabaseClient = null;
+      var currentUserId = '';
+      var legacyStorageKey = '';
+      var migrationMarkerKey = '';
+      var cacheKey = '';
       var saveTimer = null;
+      var saveChain = Promise.resolve();
+      var saveSequence = 0;
       var isReady = false;
 
       var notesList = document.getElementById('notesList');
@@ -396,52 +402,171 @@
         };
       }
 
-      function loadNotes() {
+      function rowToNote(row) {
+        return normalizeNote({
+          id: row.id,
+          title: row.title,
+          content: row.content,
+          tags: row.tags,
+          favorite: row.favorite,
+          pinned: row.pinned,
+          archived: row.archived,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at
+        });
+      }
+
+      function noteToRow(note) {
+        return {
+          id: note.id,
+          user_id: currentUserId,
+          title: note.title || '',
+          content: safeNoteHtml(note.content || ''),
+          tags: note.tags || [],
+          favorite: Boolean(note.favorite),
+          pinned: Boolean(note.pinned),
+          archived: Boolean(note.archived),
+          created_at: note.createdAt,
+          updated_at: note.updatedAt
+        };
+      }
+
+      function localGet(key) {
+        try { return localStorage.getItem(key); } catch (error) { return null; }
+      }
+
+      function localSet(key, value) {
+        try { localStorage.setItem(key, value); return true; } catch (error) { return false; }
+      }
+
+      function readLocalNotes(key) {
         try {
-          var stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
-          notes = Array.isArray(stored) ? stored.map(normalizeNote) : [];
+          var stored = JSON.parse(localGet(key) || '[]');
+          return Array.isArray(stored) ? stored.map(normalizeNote) : [];
         } catch (error) {
-          notes = [];
-          showToast('toastErr', 'toastErrMsg', 'Saved notes could not be read');
+          return [];
         }
-        if (!notes.length) {
-          var now = new Date().toISOString();
-          notes = [normalizeNote({
-            id: makeId(),
-            title: 'Welcome to Notes',
-            content: '<p>Use this space for ideas, meeting minutes, campaign plans, and information you want to keep close.</p><h2>Quick tips</h2><ul><li>Create a note with <strong>Ctrl+N</strong></li><li>Your changes save automatically</li><li>Use tags, favorites, and pins to stay organized</li></ul>',
-            tags: ['Getting started'],
-            pinned: true,
-            createdAt: now,
-            updatedAt: now
-          })];
-          persistNow(false);
+      }
+
+      function cacheNotes() {
+        if (!cacheKey) return;
+        localSet(cacheKey, JSON.stringify(notes));
+      }
+
+      async function fetchRemoteNotes() {
+        var result = await supabaseClient
+          .from('admin_notes')
+          .select('id,title,content,tags,favorite,pinned,archived,created_at,updated_at')
+          .eq('user_id', currentUserId)
+          .order('pinned', { ascending: false })
+          .order('updated_at', { ascending: false });
+        if (result.error) throw result.error;
+        return (result.data || []).map(rowToNote);
+      }
+
+      async function migrateLegacyNotes(remoteNotes) {
+        if (!legacyStorageKey || localGet(migrationMarkerKey) === 'done') return false;
+        var legacyNotes = readLocalNotes(legacyStorageKey);
+        if (!legacyNotes.length) {
+          localSet(migrationMarkerKey, 'done');
+          return false;
+        }
+
+        var remoteIds = new Set(remoteNotes.map(function (note) { return note.id; }));
+        var missing = legacyNotes.filter(function (note) { return !remoteIds.has(note.id); });
+        if (missing.length) {
+          var result = await supabaseClient.from('admin_notes').insert(missing.map(noteToRow));
+          if (result.error) throw result.error;
+        }
+        localSet(migrationMarkerKey, 'done');
+        if (missing.length) showToast('toastOk', 'toastOkMsg', missing.length + ' local note(s) moved to Supabase');
+        return missing.length > 0;
+      }
+
+      function makeWelcomeNote() {
+        var now = new Date().toISOString();
+        return normalizeNote({
+          id: makeId(),
+          title: 'Welcome to Notes',
+          content: '<p>Use this space for ideas, meeting minutes, campaign plans, and information you want to keep close.</p><h2>Quick tips</h2><ul><li>Create a note with <strong>Ctrl+N</strong></li><li>Your changes save automatically to Supabase</li><li>Use tags, favorites, and pins to stay organized</li></ul>',
+          tags: ['Getting started'],
+          pinned: true,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+
+      async function loadNotes() {
+        notesList.innerHTML = '<div class="state-box"><div class="state-spinner"></div><div class="state-label">Loading notes...</div></div>';
+        noteEditorUi.classList.add('hidden-editor');
+        noteNoSelection.classList.remove('show');
+        try {
+          var remoteNotes = await fetchRemoteNotes();
+          var migrated = await migrateLegacyNotes(remoteNotes);
+          notes = migrated ? await fetchRemoteNotes() : remoteNotes;
+          if (!notes.length) {
+            var welcome = makeWelcomeNote();
+            notes = [welcome];
+            var welcomeSaved = await persistNote(welcome, false);
+            if (!welcomeSaved) throw new Error('Could not create the initial note');
+          }
+          cacheNotes();
+          saveState.classList.remove('saving');
+          saveStateText.textContent = 'Saved to Supabase';
+        } catch (error) {
+          var cachedNotes = readLocalNotes(cacheKey);
+          if (cachedNotes.length) notes = cachedNotes;
+          saveState.classList.remove('saving');
+          saveStateText.textContent = 'Sync unavailable';
+          showToast('toastErr', 'toastErrMsg', notes.length
+            ? 'Supabase unavailable. Showing the last cached copy.'
+            : 'Could not load notes from Supabase: ' + (error.message || String(error)));
         }
         selectedId = notes[0] ? notes[0].id : '';
         renderAll();
       }
 
+      function persistNote(note, showConfirmation) {
+        if (!supabaseClient || !currentUserId || !note) return Promise.resolve(false);
+        var row = noteToRow(normalizeNote(note));
+        var sequence = ++saveSequence;
+        saveState.classList.add('saving');
+        saveStateText.textContent = 'Saving to Supabase...';
+
+        saveChain = saveChain.then(async function () {
+          var result = await supabaseClient
+            .from('admin_notes')
+            .upsert(row, { onConflict: 'user_id,id' });
+          if (result.error) throw result.error;
+          cacheNotes();
+          if (sequence === saveSequence) {
+            saveState.classList.remove('saving');
+            saveStateText.textContent = 'Saved to Supabase';
+          }
+          if (showConfirmation) showToast('toastOk', 'toastOkMsg', 'Note saved to Supabase');
+          return true;
+        }).catch(function (error) {
+          if (sequence === saveSequence) {
+            saveState.classList.remove('saving');
+            saveStateText.textContent = 'Sync failed';
+          }
+          showToast('toastErr', 'toastErrMsg', 'Supabase save failed: ' + (error.message || String(error)));
+          return false;
+        });
+        return saveChain;
+      }
+
       function persistNow(showConfirmation) {
-        if (!storageKey) return;
         clearTimeout(saveTimer);
         saveTimer = null;
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(notes));
-          saveState.classList.remove('saving');
-          saveStateText.textContent = 'Saved';
-          if (showConfirmation) showToast('toastOk', 'toastOkMsg', 'Note saved');
-        } catch (error) {
-          saveState.classList.remove('saving');
-          saveStateText.textContent = 'Save failed';
-          showToast('toastErr', 'toastErrMsg', 'Browser storage is full or unavailable');
-        }
+        return persistNote(currentNote(), showConfirmation);
       }
 
       function queueSave() {
         saveState.classList.add('saving');
-        saveStateText.textContent = 'Saving...';
+        saveStateText.textContent = 'Saving to Supabase...';
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(function () { persistNow(false); }, 450);
+        saveTimer = setTimeout(function () { persistNow(false); }, 400);
       }
 
       function syncEditorToNote() {
@@ -545,6 +670,7 @@
 
       function createNote() {
         syncEditorToNote();
+        persistNow(false);
         var now = new Date().toISOString();
         var note = normalizeNote({ id: makeId(), title: '', content: '', tags: [], createdAt: now, updatedAt: now });
         notes.unshift(note);
@@ -553,7 +679,7 @@
         document.querySelectorAll('.note-view-btn').forEach(function (button) { button.classList.toggle('active', button.dataset.view === 'all'); });
         searchInput.value = '';
         tagFilter.value = '';
-        persistNow(false);
+        persistNote(note, false);
         renderAll();
         setTimeout(function () { noteTitle.focus(); }, 20);
       }
@@ -562,6 +688,7 @@
         var source = currentNote();
         if (!source) return;
         syncEditorToNote();
+        persistNow(false);
         var now = new Date().toISOString();
         var copy = normalizeNote(Object.assign({}, source, {
           id: makeId(), title: (source.title || 'Untitled') + ' (Copy)', pinned: false, archived: false, createdAt: now, updatedAt: now
@@ -569,17 +696,30 @@
         notes.unshift(copy);
         selectedId = copy.id;
         activeView = 'all';
-        persistNow(false);
+        persistNote(copy, false);
         renderAll();
         showToast('toastOk', 'toastOkMsg', 'Note duplicated');
       }
 
-      function deleteNote() {
+      async function deleteNote() {
         var note = currentNote();
         if (!note || !confirm('Delete this note permanently?')) return;
+        clearTimeout(saveTimer);
+        saveTimer = null;
+        await saveChain;
+        var result = await supabaseClient
+          .from('admin_notes')
+          .delete()
+          .eq('user_id', currentUserId)
+          .eq('id', note.id)
+          .select('id');
+        if (result.error || !result.data || !result.data.length) {
+          showToast('toastErr', 'toastErrMsg', 'Supabase delete failed: ' + (result.error ? result.error.message : 'note not found'));
+          return;
+        }
         notes = notes.filter(function (item) { return item.id !== note.id; });
         selectedId = getFilteredNotes()[0] ? getFilteredNotes()[0].id : (notes[0] ? notes[0].id : '');
-        persistNow(false);
+        cacheNotes();
         renderAll();
         showToast('toastOk', 'toastOkMsg', 'Note deleted');
       }
@@ -817,9 +957,19 @@
         persistNow(false);
       });
 
+      document.addEventListener('visibilitychange', function () {
+        if (!isReady || document.visibilityState !== 'hidden') return;
+        syncEditorToNote();
+        persistNow(false);
+      });
+
       window.onAuthReady = function (session) {
         if (!session || isReady) return;
-        storageKey = 'seminyak-admin-notes-v1:' + session.user.id;
+        supabaseClient = SeminyakAuth.getClient();
+        currentUserId = session.user.id;
+        legacyStorageKey = 'seminyak-admin-notes-v1:' + currentUserId;
+        migrationMarkerKey = 'seminyak-admin-notes-migrated-v1:' + currentUserId;
+        cacheKey = 'seminyak-admin-notes-cache-v1:' + currentUserId;
         isReady = true;
         loadNotes();
       };

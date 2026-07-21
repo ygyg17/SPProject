@@ -13,6 +13,10 @@ const SeminyakAuth = (function () {
     return data.session; // null kalau belum login
   }
 
+  function getClient() {
+    return _sb;
+  }
+
   async function requireRole(requiredRoleAttr) {
     const session = await getSession();
     if (!session) {
@@ -120,7 +124,7 @@ const SeminyakAuth = (function () {
     }
   });
 
-  return { getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
+  return { getClient, getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
 })();
 
 // PENTING: assign eksplisit ke window — `const` di top-level TIDAK otomatis
