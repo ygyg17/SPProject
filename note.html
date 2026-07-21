@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notes | Marketing Desk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260721-1">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <style>
+    .notes-page { min-height: calc(100vh - 52px); padding: 22px; background: var(--bg); }
+    .notes-app { height: calc(100vh - 96px); min-height: 600px; display: grid; grid-template-columns: 300px minmax(0, 1fr); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 32px rgba(28,25,23,.045); }
+
+    .notes-library { min-width: 0; display: flex; flex-direction: column; background: #fcfcfb; border-right: 1px solid var(--line); }
+    .notes-library-head { padding: 20px 18px 14px; border-bottom: 1px solid var(--line); }
+    .notes-library-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+    .notes-library-title h1 { font-size: 17px; letter-spacing: -.02em; }
+    .notes-new-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; color: #fff; background: var(--gold); cursor: pointer; transition: .15s ease; }
+    .notes-new-btn:hover { background: var(--gold-hover); transform: translateY(-1px); }
+    .notes-new-btn svg { width: 15px; height: 15px; }
+
+    .note-search { position: relative; }
+    .note-search svg { position: absolute; left: 11px; top: 50%; width: 14px; height: 14px; color: var(--muted); transform: translateY(-50%); pointer-events: none; }
+    .note-search input { width: 100%; height: 36px; padding: 0 32px 0 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: 500 12px/1 'Inter', sans-serif; outline: none; }
+    .note-search input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    .note-search-clear { display: none; position: absolute; right: 8px; top: 50%; width: 20px; height: 20px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); transform: translateY(-50%); cursor: pointer; }
+    .note-search-clear.show { display: block; }
+
+    .note-views { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    .note-view-btn { min-width: 0; padding: 7px 4px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); font: 600 10px/1 'JetBrains Mono', monospace; letter-spacing: .03em; text-transform: uppercase; cursor: pointer; }
+    .note-view-btn:hover { color: var(--ink); background: var(--bg); }
+    .note-view-btn.active { color: var(--gold); border-color: var(--gold-border); background: var(--gold-dim); }
+    .note-tag-filter { padding: 0 12px 10px; border-bottom: 1px solid var(--line); }
+    .note-tag-filter select { min-height: 32px; padding: 6px 30px 6px 10px; border-radius: 7px; font: 600 10.5px/1 'JetBrains Mono', monospace; background-color: var(--surface); }
+
+    .notes-list { flex: 1; min-height: 0; overflow-y: auto; padding: 8px; }
+    .note-card { position: relative; padding: 13px 13px 12px 15px; border: 1px solid transparent; border-radius: 9px; cursor: pointer; transition: .15s ease; }
+    .note-card + .note-card { margin-top: 2px; }
+    .note-card:hover { background: var(--bg); }
+    .note-card.active { border-color: var(--gold-border); background: var(--gold-dim); }
+    .note-card::before { content: ''; position: absolute; left: 5px; top: 16px; bottom: 16px; width: 2px; border-radius: 3px; background: transparent; }
+    .note-card.active::before { background: var(--gold); }
+    .note-card-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .note-card-title { flex: 1; min-width: 0; overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .note-card-mark { flex: 0 0 auto; color: var(--gold); font-size: 10px; }
+    .note-card-excerpt { height: 32px; margin-top: 5px; overflow: hidden; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+    .note-card-meta { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: #a8a29e; font: 500 9px/1.2 'JetBrains Mono', monospace; }
+    .note-card-tag { max-width: 100px; padding: 3px 6px; overflow: hidden; border-radius: 4px; color: var(--gold); background: var(--gold-dim); text-overflow: ellipsis; white-space: nowrap; }
+    .notes-empty { display: flex; height: 100%; min-height: 230px; padding: 24px; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
+    .notes-empty svg { width: 32px; height: 32px; margin-bottom: 12px; opacity: .35; }
+    .notes-empty strong { display: block; margin-bottom: 5px; color: var(--ink-2); font-size: 13px; }
+    .notes-empty span { font-size: 11.5px; line-height: 1.5; }
+
+    .note-workspace { min-width: 0; display: flex; flex-direction: column; background: var(--surface); }
+    .note-editor-head { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--line); }
+    .note-save-state { display: flex; align-items: center; gap: 7px; color: var(--muted); font: 600 10px/1 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .05em; }
+    .note-save-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+    .note-save-state.saving .note-save-dot { background: var(--gold); animation: notePulse .8s ease infinite alternate; }
+    @keyframes notePulse { to { opacity: .25; } }
+    .note-head-actions { position: relative; display: flex; align-items: center; gap: 7px; }
+    .note-icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--muted); cursor: pointer; transition: .15s ease; }
+    .note-icon-btn:hover, .note-icon-btn.active { color: var(--gold); border-color: var(--gold-border); background: var(--gold-dim); }
+    .note-icon-btn svg { width: 15px; height: 15px; }
+    .note-more-menu { display: none; position: absolute; top: 39px; right: 0; z-index: 30; width: 180px; padding: 6px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: 0 14px 32px rgba(28,25,23,.14); }
+    .note-more-menu.show { display: block; }
+    .note-menu-item { width: 100%; padding: 9px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font: 500 12px/1.2 'Inter', sans-serif; text-align: left; cursor: pointer; }
+    .note-menu-item:hover { background: var(--bg); color: var(--ink); }
+    .note-menu-item.danger { color: var(--urgent); }
+    .note-menu-separator { height: 1px; margin: 5px 3px; background: var(--line); }
+
+    .note-toolbar { display: flex; align-items: center; gap: 4px; min-height: 46px; padding: 7px 18px; overflow-x: auto; border-bottom: 1px solid var(--line); background: #fdfdfc; scrollbar-width: thin; }
+    .note-tool { flex: 0 0 auto; min-width: 30px; height: 30px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink-2); font: 600 12px/1 'Inter', sans-serif; cursor: pointer; }
+    .note-tool:hover, .note-tool.active { color: var(--gold); border-color: var(--gold-border); background: var(--gold-dim); }
+    .note-tool svg { width: 14px; height: 14px; }
+    .note-tool-separator { flex: 0 0 auto; width: 1px; height: 20px; margin: 0 3px; background: var(--line); }
+
+    .note-document { flex: 1; min-height: 0; overflow-y: auto; }
+    .note-paper { width: min(100%, 860px); min-height: 100%; margin: 0 auto; padding: 54px 72px 90px; }
+    .note-title-input { width: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font: 700 34px/1.2 'Inter', sans-serif; letter-spacing: -.04em; outline: none; box-shadow: none; }
+    .note-title-input:focus { border: 0; background: transparent; box-shadow: none; }
+    .note-title-input::placeholder { color: #d6d3d1; }
+    .note-properties { display: flex; align-items: center; gap: 8px; margin: 18px 0 28px; flex-wrap: wrap; }
+    .note-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .note-tag { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--gold-border); border-radius: 5px; color: var(--gold); background: var(--gold-dim); font: 600 10px/1 'JetBrains Mono', monospace; }
+    .note-tag-remove { padding: 0; border: 0; background: transparent; color: inherit; font-size: 12px; line-height: 1; cursor: pointer; opacity: .7; }
+    .note-add-tag { padding: 5px 8px; border: 1px dashed var(--line-2); border-radius: 5px; background: transparent; color: var(--muted); font: 600 10px/1 'JetBrains Mono', monospace; cursor: pointer; }
+    .note-add-tag:hover { color: var(--gold); border-color: var(--gold-border); }
+    .note-date { margin-left: auto; color: #a8a29e; font: 500 9.5px/1 'JetBrains Mono', monospace; }
+
+    .note-content { min-height: 360px; color: var(--ink-2); font-size: 15px; line-height: 1.75; outline: none; overflow-wrap: anywhere; }
+    .note-content:empty::before { content: attr(data-placeholder); color: #a8a29e; pointer-events: none; }
+    .note-content h1, .note-content h2, .note-content h3 { margin: 1.4em 0 .45em; color: var(--ink); line-height: 1.3; letter-spacing: -.025em; }
+    .note-content h1 { font-size: 26px; } .note-content h2 { font-size: 21px; } .note-content h3 { font-size: 17px; }
+    .note-content p { margin: .55em 0; }
+    .note-content ul, .note-content ol { padding-left: 1.5em; margin: .65em 0; }
+    .note-content blockquote { margin: 1em 0; padding: 7px 16px; border-left: 3px solid var(--gold); color: var(--muted); background: var(--gold-dim); }
+    .note-content pre { margin: 1em 0; padding: 14px 16px; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #f5f5f4; color: #292524; font: 12.5px/1.65 'JetBrains Mono', monospace; white-space: pre-wrap; }
+    .note-content a { color: var(--gold); text-decoration: underline; }
+    .note-content .note-check { display: flex; align-items: flex-start; gap: 9px; margin: 7px 0; }
+    .note-content .note-check-box { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 5px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--line-2); border-radius: 4px; color: #fff; background: var(--surface); cursor: pointer; }
+    .note-content .note-check.checked .note-check-box { border-color: var(--gold); background: var(--gold); }
+    .note-content .note-check.checked > span:last-child { color: var(--muted); text-decoration: line-through; }
+
+    .note-editor-foot { min-height: 38px; display: flex; align-items: center; gap: 16px; padding: 7px 18px; border-top: 1px solid var(--line); color: var(--muted); font: 500 9.5px/1 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .04em; }
+    .note-shortcut-hint { margin-left: auto; }
+    .note-no-selection { flex: 1; display: none; align-items: center; justify-content: center; padding: 32px; text-align: center; }
+    .note-no-selection.show { display: flex; }
+    .note-no-selection svg { width: 44px; height: 44px; margin-bottom: 16px; color: var(--gold); opacity: .55; }
+    .note-no-selection h2 { margin-bottom: 7px; font-size: 17px; }
+    .note-no-selection p { max-width: 320px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+    .note-no-selection button { margin-top: 18px; }
+    .note-editor-ui.hidden-editor { display: none; }
+
+    @media (max-width: 980px) {
+      .notes-page { padding: 14px; }
+      .notes-app { height: calc(100vh - 80px); grid-template-columns: 265px minmax(0, 1fr); }
+      .note-paper { padding: 42px 44px 80px; }
+      .note-shortcut-hint { display: none; }
+    }
+    @media (max-width: 700px) {
+      .topbar-clock { display: none; }
+      .notes-page { padding: 0; }
+      .notes-app { height: auto; min-height: calc(100vh - 52px); grid-template-columns: 1fr; border: 0; border-radius: 0; box-shadow: none; }
+      .notes-library { height: 310px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .note-workspace { min-height: 650px; }
+      .note-paper { padding: 34px 22px 72px; }
+      .note-title-input { font-size: 28px; }
+      .note-date { width: 100%; margin-left: 0; }
+      .note-editor-head, .note-toolbar { padding-left: 12px; padding-right: 12px; }
+    }
+  </style>
+</head>
+
+<body data-active-page="note" data-require-role="admin">
+  <nav class="topbar">
+    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Open menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <img class="topbar-logo" src="images/Logo.png" alt="The Seminyak">
+    <div class="topbar-div"></div>
+    <span class="topbar-title">Marketing Desk</span>
+    <div id="authUserBox"></div>
+    <div class="topbar-clock" id="mastClock">-</div>
+  </nav>
+
+  <div id="sidebar-container"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="body-wrap single-page notes-page">
+    <section class="notes-app" aria-label="Notes workspace">
+      <aside class="notes-library">
+        <div class="notes-library-head">
+          <div class="notes-library-title">
+            <div>
+              <div class="panel-eyebrow">Admin workspace</div>
+              <h1>Notes</h1>
+            </div>
+            <button type="button" class="notes-new-btn" id="newNoteBtn" title="New note (Ctrl+N)" aria-label="Create new note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+          <div class="note-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg>
+            <input id="noteSearch" type="search" placeholder="Search notes..." autocomplete="off">
+            <button type="button" class="note-search-clear" id="noteSearchClear" aria-label="Clear search">&times;</button>
+          </div>
+        </div>
+
+        <div class="note-views" id="noteViews">
+          <button type="button" class="note-view-btn active" data-view="all">All <span id="allCount">0</span></button>
+          <button type="button" class="note-view-btn" data-view="favorites">Favorite</button>
+          <button type="button" class="note-view-btn" data-view="archive">Archive</button>
+        </div>
+        <div class="note-tag-filter">
+          <select id="tagFilter" aria-label="Filter notes by tag"><option value="">All tags</option></select>
+        </div>
+        <div class="notes-list" id="notesList"></div>
+      </aside>
+
+      <section class="note-workspace">
+        <div class="note-no-selection" id="noteNoSelection">
+          <div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+            <h2>Your notes, in one place</h2>
+            <p>Create a note for meeting minutes, ideas, plans, or any information you want to keep close.</p>
+            <button type="button" class="btn-add" id="emptyNewNoteBtn">+ Create Note</button>
+          </div>
+        </div>
+
+        <div class="note-editor-ui" id="noteEditorUi">
+          <header class="note-editor-head">
+            <div class="note-save-state" id="saveState"><span class="note-save-dot"></span><span id="saveStateText">Saved</span></div>
+            <div class="note-head-actions">
+              <button type="button" class="note-icon-btn" id="favoriteBtn" title="Favorite" aria-label="Toggle favorite">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.1 8.3 22 9.3 17 14.2 18.2 21 12 17.8 5.8 21 7 14.2 2 9.3 8.9 8.3 12 2"/></svg>
+              </button>
+              <button type="button" class="note-icon-btn" id="pinBtn" title="Pin note" aria-label="Toggle pin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M5 17h14"/><path d="m7 3 1 8-3 4h14l-3-4 1-8z"/></svg>
+              </button>
+              <button type="button" class="note-icon-btn" id="moreBtn" title="More actions" aria-label="More actions" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+              </button>
+              <div class="note-more-menu" id="moreMenu">
+                <button type="button" class="note-menu-item" data-action="duplicate">Duplicate note</button>
+                <button type="button" class="note-menu-item" data-action="export">Export as HTML</button>
+                <button type="button" class="note-menu-item" data-action="archive">Move to archive</button>
+                <div class="note-menu-separator"></div>
+                <button type="button" class="note-menu-item danger" data-action="delete">Delete note</button>
+              </div>
+            </div>
+          </header>
+
+          <div class="note-toolbar" id="noteToolbar" role="toolbar" aria-label="Text formatting">
+            <button type="button" class="note-tool" data-block="p" title="Normal text">Text</button>
+            <button type="button" class="note-tool" data-block="h2" title="Heading">H2</button>
+            <div class="note-tool-separator"></div>
+            <button type="button" class="note-tool" data-command="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+            <button type="button" class="note-tool" data-command="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+            <button type="button" class="note-tool" data-command="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+            <button type="button" class="note-tool" data-command="strikeThrough" title="Strikethrough"><s>S</s></button>
+            <div class="note-tool-separator"></div>
+            <button type="button" class="note-tool" data-command="insertUnorderedList" title="Bulleted list" aria-label="Bulleted list">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="9" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="9" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+            </button>
+            <button type="button" class="note-tool" data-command="insertOrderedList" title="Numbered list" aria-label="Numbered list">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 5h1v3M3.5 8H6M3.5 11.5c.3-.4.8-.7 1.3-.7.8 0 1.4.5 1.4 1.2 0 1-1.2 1.5-2.6 2.8h2.8"/></svg>
+            </button>
+            <button type="button" class="note-tool" data-action="checklist" title="Checklist" aria-label="Checklist">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="5" height="5" rx="1"/><polyline points="4.5 6.5 6 8 9 4.5"/><line x1="12" y1="6.5" x2="21" y2="6.5"/><rect x="3" y="15" width="5" height="5" rx="1"/><line x1="12" y1="17.5" x2="21" y2="17.5"/></svg>
+            </button>
+            <div class="note-tool-separator"></div>
+            <button type="button" class="note-tool" data-block="blockquote" title="Quote" aria-label="Quote">&ldquo;</button>
+            <button type="button" class="note-tool" data-block="pre" title="Code block" aria-label="Code block">&lt;/&gt;</button>
+            <button type="button" class="note-tool" data-action="link" title="Add link" aria-label="Add link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1"/></svg>
+            </button>
+            <div class="note-tool-separator"></div>
+            <button type="button" class="note-tool" data-command="undo" title="Undo" aria-label="Undo">&#8630;</button>
+            <button type="button" class="note-tool" data-command="redo" title="Redo" aria-label="Redo">&#8631;</button>
+          </div>
+
+          <div class="note-document">
+            <article class="note-paper">
+              <input class="note-title-input" id="noteTitle" type="text" maxlength="180" placeholder="Untitled" autocomplete="off">
+              <div class="note-properties">
+                <div class="note-tags" id="noteTags"></div>
+                <button type="button" class="note-add-tag" id="addTagBtn">+ Add tag</button>
+                <span class="note-date" id="noteDate">-</span>
+              </div>
+              <div class="note-content" id="noteContent" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" data-placeholder="Start writing your note..."></div>
+            </article>
+          </div>
+
+          <footer class="note-editor-foot">
+            <span id="wordCount">0 words</span>
+            <span id="charCount">0 characters</span>
+            <span class="note-shortcut-hint">Ctrl+S save &middot; Ctrl+N new note</span>
+          </footer>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="toastOk" class="toast toast-ok"><span class="toast-icon">&#10003;</span><span id="toastOkMsg">Saved</span></div>
+  <div id="toastErr" class="toast toast-err"><span class="toast-icon">!</span><span id="toastErrMsg">Something went wrong</span></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var notes = [];
+      var selectedId = '';
+      var activeView = 'all';
+      var storageKey = '';
+      var saveTimer = null;
+      var isReady = false;
+
+      var notesList = document.getElementById('notesList');
+      var noteTitle = document.getElementById('noteTitle');
+      var noteContent = document.getElementById('noteContent');
+      var noteEditorUi = document.getElementById('noteEditorUi');
+      var noteNoSelection = document.getElementById('noteNoSelection');
+      var saveState = document.getElementById('saveState');
+      var saveStateText = document.getElementById('saveStateText');
+      var searchInput = document.getElementById('noteSearch');
+      var tagFilter = document.getElementById('tagFilter');
+      var moreMenu = document.getElementById('moreMenu');
+
+      function tickClock() {
+        var now = new Date();
+        var d = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        var t = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('mastClock').innerHTML = d + '&nbsp;&nbsp;<b>' + t + '</b>';
+      }
+      tickClock();
+      setInterval(tickClock, 30000);
+
+      function makeId() {
+        return 'note-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      }
+
+      function currentNote() {
+        return notes.find(function (note) { return note.id === selectedId; }) || null;
+      }
+
+      function formatDate(value, withTime) {
+        var date = new Date(value);
+        if (isNaN(date)) return '-';
+        var options = withTime
+          ? { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+          : { day: '2-digit', month: 'short', year: 'numeric' };
+        return date.toLocaleString('en-GB', options);
+      }
+
+      function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function (char) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+        });
+      }
+
+      function sanitizeHtml(html) {
+        var template = document.createElement('template');
+        template.innerHTML = String(html || '');
+        var allowed = ['A','B','BLOCKQUOTE','BR','CODE','DIV','EM','H1','H2','H3','I','LI','OL','P','PRE','S','SPAN','STRIKE','STRONG','U','UL'];
+        var blocked = ['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','SVG','MATH','FORM','INPUT','BUTTON'];
+        Array.from(template.content.querySelectorAll('*')).forEach(function (node) {
+          if (blocked.indexOf(node.tagName) !== -1) {
+            node.remove();
+            return;
+          }
+          if (allowed.indexOf(node.tagName) === -1) {
+            node.replaceWith.apply(node, Array.from(node.childNodes));
+            return;
+          }
+          var safeHref = node.tagName === 'A' ? (node.getAttribute('data-safe-href') || node.getAttribute('href') || '') : '';
+          var isCheck = node.classList.contains('note-check');
+          var isChecked = node.classList.contains('checked');
+          var isCheckBox = node.classList.contains('note-check-box');
+          Array.from(node.attributes).forEach(function (attr) { node.removeAttribute(attr.name); });
+          if (node.tagName === 'A') {
+            if (/^(https?:|mailto:)/i.test(safeHref)) {
+              node.setAttribute('href', safeHref);
+              node.setAttribute('target', '_blank');
+              node.setAttribute('rel', 'noopener noreferrer');
+            }
+          }
+          if (isCheck) node.className = isChecked ? 'note-check checked' : 'note-check';
+          if (isCheckBox) {
+            node.className = 'note-check-box';
+            node.setAttribute('contenteditable', 'false');
+            node.innerHTML = '&#10003;';
+          }
+        });
+        return template.innerHTML;
+      }
+
+      function safeNoteHtml(html) {
+        var template = document.createElement('template');
+        template.innerHTML = String(html || '');
+        template.content.querySelectorAll('a[href]').forEach(function (link) {
+          link.setAttribute('data-safe-href', link.getAttribute('href'));
+        });
+        template.content.querySelectorAll('.note-check').forEach(function (item) {
+          item.setAttribute('data-was-check', '1');
+          if (item.classList.contains('checked')) item.setAttribute('data-was-checked', '1');
+        });
+        template.content.querySelectorAll('.note-check-box').forEach(function (box) { box.setAttribute('data-was-check-box', '1'); });
+        var cleanTemplate = document.createElement('template');
+        cleanTemplate.innerHTML = sanitizeHtml(template.innerHTML);
+        return cleanTemplate.innerHTML;
+      }
+
+      function stripHtml(html) {
+        var temp = document.createElement('div');
+        temp.innerHTML = safeNoteHtml(html);
+        return (temp.textContent || '').replace(/\s+/g, ' ').trim();
+      }
+
+      function normalizeNote(note) {
+        var now = new Date().toISOString();
+        return {
+          id: String(note.id || makeId()),
+          title: String(note.title || ''),
+          content: safeNoteHtml(note.content || ''),
+          tags: Array.isArray(note.tags) ? note.tags.map(function (tag) { return String(tag).trim().slice(0, 28); }).filter(Boolean).slice(0, 8) : [],
+          favorite: Boolean(note.favorite),
+          pinned: Boolean(note.pinned),
+          archived: Boolean(note.archived),
+          createdAt: note.createdAt || now,
+          updatedAt: note.updatedAt || now
+        };
+      }
+
+      function loadNotes() {
+        try {
+          var stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          notes = Array.isArray(stored) ? stored.map(normalizeNote) : [];
+        } catch (error) {
+          notes = [];
+          showToast('toastErr', 'toastErrMsg', 'Saved notes could not be read');
+        }
+        if (!notes.length) {
+          var now = new Date().toISOString();
+          notes = [normalizeNote({
+            id: makeId(),
+            title: 'Welcome to Notes',
+            content: '<p>Use this space for ideas, meeting minutes, campaign plans, and information you want to keep close.</p><h2>Quick tips</h2><ul><li>Create a note with <strong>Ctrl+N</strong></li><li>Your changes save automatically</li><li>Use tags, favorites, and pins to stay organized</li></ul>',
+            tags: ['Getting started'],
+            pinned: true,
+            createdAt: now,
+            updatedAt: now
+          })];
+          persistNow(false);
+        }
+        selectedId = notes[0] ? notes[0].id : '';
+        renderAll();
+      }
+
+      function persistNow(showConfirmation) {
+        if (!storageKey) return;
+        clearTimeout(saveTimer);
+        saveTimer = null;
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(notes));
+          saveState.classList.remove('saving');
+          saveStateText.textContent = 'Saved';
+          if (showConfirmation) showToast('toastOk', 'toastOkMsg', 'Note saved');
+        } catch (error) {
+          saveState.classList.remove('saving');
+          saveStateText.textContent = 'Save failed';
+          showToast('toastErr', 'toastErrMsg', 'Browser storage is full or unavailable');
+        }
+      }
+
+      function queueSave() {
+        saveState.classList.add('saving');
+        saveStateText.textContent = 'Saving...';
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () { persistNow(false); }, 450);
+      }
+
+      function syncEditorToNote() {
+        var note = currentNote();
+        if (!note) return;
+        note.title = noteTitle.value.trimStart().slice(0, 180);
+        note.content = safeNoteHtml(noteContent.innerHTML);
+        note.updatedAt = new Date().toISOString();
+        updateCounts();
+      }
+
+      function getFilteredNotes() {
+        var query = searchInput.value.toLowerCase().trim();
+        var tag = tagFilter.value;
+        return notes.filter(function (note) {
+          if (activeView === 'all' && note.archived) return false;
+          if (activeView === 'favorites' && (!note.favorite || note.archived)) return false;
+          if (activeView === 'archive' && !note.archived) return false;
+          if (tag && note.tags.indexOf(tag) === -1) return false;
+          if (!query) return true;
+          return (note.title + ' ' + stripHtml(note.content) + ' ' + note.tags.join(' ')).toLowerCase().indexOf(query) !== -1;
+        }).sort(function (a, b) {
+          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+          return new Date(b.updatedAt) - new Date(a.updatedAt);
+        });
+      }
+
+      function renderList() {
+        var filtered = getFilteredNotes();
+        document.getElementById('allCount').textContent = notes.filter(function (note) { return !note.archived; }).length;
+        if (!filtered.length) {
+          notesList.innerHTML = '<div class="notes-empty"><div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg><strong>No notes found</strong><span>Try a different search, tag, or view.</span></div></div>';
+          return;
+        }
+        notesList.innerHTML = filtered.map(function (note) {
+          var excerpt = stripHtml(note.content) || 'Empty note';
+          var mark = (note.pinned ? '&#9679;' : '') + (note.favorite ? ' &#9733;' : '');
+          return '<article class="note-card' + (note.id === selectedId ? ' active' : '') + '" data-note-id="' + escapeHtml(note.id) + '" tabindex="0">' +
+            '<div class="note-card-top"><div class="note-card-title">' + escapeHtml(note.title || 'Untitled') + '</div>' +
+            (mark ? '<span class="note-card-mark">' + mark + '</span>' : '') + '</div>' +
+            '<div class="note-card-excerpt">' + escapeHtml(excerpt) + '</div>' +
+            '<div class="note-card-meta"><span>' + escapeHtml(formatDate(note.updatedAt, false)) + '</span>' +
+            (note.tags[0] ? '<span class="note-card-tag">' + escapeHtml(note.tags[0]) + '</span>' : '') + '</div></article>';
+        }).join('');
+      }
+
+      function renderTagFilter() {
+        var previous = tagFilter.value;
+        var tags = [];
+        notes.forEach(function (note) { note.tags.forEach(function (tag) { if (tags.indexOf(tag) === -1) tags.push(tag); }); });
+        tags.sort(function (a, b) { return a.localeCompare(b); });
+        tagFilter.innerHTML = '<option value="">All tags</option>' + tags.map(function (tag) {
+          return '<option value="' + escapeHtml(tag) + '">' + escapeHtml(tag) + '</option>';
+        }).join('');
+        if (tags.indexOf(previous) !== -1) tagFilter.value = previous;
+      }
+
+      function renderTags(note) {
+        document.getElementById('noteTags').innerHTML = note.tags.map(function (tag, index) {
+          return '<span class="note-tag">' + escapeHtml(tag) + '<button type="button" class="note-tag-remove" data-tag-index="' + index + '" aria-label="Remove tag">&times;</button></span>';
+        }).join('');
+      }
+
+      function renderEditor() {
+        var note = currentNote();
+        var hasNote = Boolean(note);
+        noteEditorUi.classList.toggle('hidden-editor', !hasNote);
+        noteNoSelection.classList.toggle('show', !hasNote);
+        if (!note) return;
+        noteTitle.value = note.title;
+        noteContent.innerHTML = safeNoteHtml(note.content);
+        document.getElementById('noteDate').textContent = 'Updated ' + formatDate(note.updatedAt, true);
+        document.getElementById('favoriteBtn').classList.toggle('active', note.favorite);
+        document.getElementById('pinBtn').classList.toggle('active', note.pinned);
+        document.querySelector('[data-action="archive"]').textContent = note.archived ? 'Restore from archive' : 'Move to archive';
+        renderTags(note);
+        updateCounts();
+      }
+
+      function renderAll() {
+        renderTagFilter();
+        renderList();
+        renderEditor();
+      }
+
+      function updateCounts() {
+        var text = (noteContent.innerText || '').trim();
+        var words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+        document.getElementById('wordCount').textContent = words + (words === 1 ? ' word' : ' words');
+        document.getElementById('charCount').textContent = text.length + (text.length === 1 ? ' character' : ' characters');
+      }
+
+      function selectNote(id) {
+        if (id === selectedId) return;
+        syncEditorToNote();
+        persistNow(false);
+        selectedId = id;
+        renderList();
+        renderEditor();
+      }
+
+      function createNote() {
+        syncEditorToNote();
+        var now = new Date().toISOString();
+        var note = normalizeNote({ id: makeId(), title: '', content: '', tags: [], createdAt: now, updatedAt: now });
+        notes.unshift(note);
+        selectedId = note.id;
+        activeView = 'all';
+        document.querySelectorAll('.note-view-btn').forEach(function (button) { button.classList.toggle('active', button.dataset.view === 'all'); });
+        searchInput.value = '';
+        tagFilter.value = '';
+        persistNow(false);
+        renderAll();
+        setTimeout(function () { noteTitle.focus(); }, 20);
+      }
+
+      function duplicateNote() {
+        var source = currentNote();
+        if (!source) return;
+        syncEditorToNote();
+        var now = new Date().toISOString();
+        var copy = normalizeNote(Object.assign({}, source, {
+          id: makeId(), title: (source.title || 'Untitled') + ' (Copy)', pinned: false, archived: false, createdAt: now, updatedAt: now
+        }));
+        notes.unshift(copy);
+        selectedId = copy.id;
+        activeView = 'all';
+        persistNow(false);
+        renderAll();
+        showToast('toastOk', 'toastOkMsg', 'Note duplicated');
+      }
+
+      function deleteNote() {
+        var note = currentNote();
+        if (!note || !confirm('Delete this note permanently?')) return;
+        notes = notes.filter(function (item) { return item.id !== note.id; });
+        selectedId = getFilteredNotes()[0] ? getFilteredNotes()[0].id : (notes[0] ? notes[0].id : '');
+        persistNow(false);
+        renderAll();
+        showToast('toastOk', 'toastOkMsg', 'Note deleted');
+      }
+
+      function toggleArchive() {
+        var note = currentNote();
+        if (!note) return;
+        note.archived = !note.archived;
+        note.pinned = note.archived ? false : note.pinned;
+        note.updatedAt = new Date().toISOString();
+        var wasArchived = note.archived;
+        persistNow(false);
+        if ((activeView === 'all' && wasArchived) || (activeView === 'archive' && !wasArchived) || (activeView === 'favorites' && wasArchived)) {
+          var next = getFilteredNotes()[0];
+          selectedId = next ? next.id : '';
+        }
+        renderAll();
+        showToast('toastOk', 'toastOkMsg', wasArchived ? 'Note archived' : 'Note restored');
+      }
+
+      function exportNote() {
+        var note = currentNote();
+        if (!note) return;
+        syncEditorToNote();
+        var title = note.title || 'Untitled';
+        var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+          '<style>body{max-width:760px;margin:60px auto;padding:0 24px;font-family:Inter,Arial,sans-serif;color:#292524;line-height:1.7}h1{font-size:34px}blockquote{border-left:3px solid #BA8F2E;padding-left:16px;color:#78716c}pre{background:#f5f5f4;padding:16px;border-radius:8px;white-space:pre-wrap}</style></head><body>' +
+          '<h1>' + escapeHtml(title) + '</h1>' + safeNoteHtml(note.content) + '</body></html>';
+        var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = title.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'note';
+        anchor.download += '.html';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        showToast('toastOk', 'toastOkMsg', 'Note exported');
+      }
+
+      function addTag() {
+        var note = currentNote();
+        if (!note) return;
+        var value = prompt('Tag name (maximum 28 characters):');
+        if (value === null) return;
+        value = value.trim().slice(0, 28);
+        if (!value) return;
+        if (note.tags.some(function (tag) { return tag.toLowerCase() === value.toLowerCase(); })) {
+          showToast('toastErr', 'toastErrMsg', 'This tag already exists');
+          return;
+        }
+        if (note.tags.length >= 8) {
+          showToast('toastErr', 'toastErrMsg', 'Maximum 8 tags per note');
+          return;
+        }
+        note.tags.push(value);
+        note.updatedAt = new Date().toISOString();
+        queueSave();
+        renderTagFilter();
+        renderTags(note);
+        renderList();
+      }
+
+      function showToast(id, messageId, message) {
+        var toast = document.getElementById(id);
+        document.getElementById(messageId).textContent = message;
+        toast.classList.add('show');
+        setTimeout(function () { toast.classList.remove('show'); }, 2600);
+      }
+
+      function focusEditor() {
+        noteContent.focus();
+      }
+
+      function runCommand(command, value) {
+        focusEditor();
+        document.execCommand(command, false, value || null);
+        syncEditorToNote();
+        queueSave();
+        renderList();
+      }
+
+      function insertChecklist() {
+        focusEditor();
+        document.execCommand('insertHTML', false, '<div class="note-check"><span class="note-check-box" contenteditable="false">&#10003;</span><span>Checklist item</span></div><div><br></div>');
+        syncEditorToNote();
+        queueSave();
+      }
+
+      document.getElementById('newNoteBtn').addEventListener('click', createNote);
+      document.getElementById('emptyNewNoteBtn').addEventListener('click', createNote);
+
+      notesList.addEventListener('click', function (event) {
+        var card = event.target.closest('.note-card');
+        if (card) selectNote(card.dataset.noteId);
+      });
+      notesList.addEventListener('keydown', function (event) {
+        var card = event.target.closest('.note-card');
+        if (card && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); selectNote(card.dataset.noteId); }
+      });
+
+      searchInput.addEventListener('input', function () {
+        document.getElementById('noteSearchClear').classList.toggle('show', Boolean(this.value));
+        renderList();
+      });
+      document.getElementById('noteSearchClear').addEventListener('click', function () {
+        searchInput.value = '';
+        this.classList.remove('show');
+        searchInput.focus();
+        renderList();
+      });
+      tagFilter.addEventListener('change', renderList);
+
+      document.getElementById('noteViews').addEventListener('click', function (event) {
+        var button = event.target.closest('.note-view-btn');
+        if (!button) return;
+        activeView = button.dataset.view;
+        document.querySelectorAll('.note-view-btn').forEach(function (item) { item.classList.toggle('active', item === button); });
+        var filtered = getFilteredNotes();
+        if (!filtered.some(function (note) { return note.id === selectedId; })) selectedId = filtered[0] ? filtered[0].id : '';
+        renderList();
+        renderEditor();
+      });
+
+      noteTitle.addEventListener('input', function () {
+        syncEditorToNote();
+        queueSave();
+        renderList();
+      });
+      noteContent.addEventListener('input', function () {
+        syncEditorToNote();
+        queueSave();
+        renderList();
+      });
+      noteContent.addEventListener('paste', function (event) {
+        event.preventDefault();
+        var text = (event.clipboardData || window.clipboardData).getData('text/plain');
+        document.execCommand('insertText', false, text);
+      });
+      noteContent.addEventListener('click', function (event) {
+        var box = event.target.closest('.note-check-box');
+        if (!box) return;
+        var item = box.closest('.note-check');
+        item.classList.toggle('checked');
+        syncEditorToNote();
+        queueSave();
+      });
+
+      document.getElementById('noteToolbar').addEventListener('mousedown', function (event) {
+        if (event.target.closest('.note-tool')) event.preventDefault();
+      });
+      document.getElementById('noteToolbar').addEventListener('click', function (event) {
+        var button = event.target.closest('.note-tool');
+        if (!button || !currentNote()) return;
+        if (button.dataset.command) runCommand(button.dataset.command);
+        if (button.dataset.block) runCommand('formatBlock', button.dataset.block);
+        if (button.dataset.action === 'checklist') insertChecklist();
+        if (button.dataset.action === 'link') {
+          var url = prompt('Paste a link (https:// or mailto:):');
+          if (url === null) return;
+          url = url.trim();
+          if (!/^(https?:|mailto:)/i.test(url)) {
+            showToast('toastErr', 'toastErrMsg', 'Please enter a valid http, https, or mailto link');
+            return;
+          }
+          runCommand('createLink', url);
+        }
+      });
+
+      document.getElementById('favoriteBtn').addEventListener('click', function () {
+        var note = currentNote();
+        if (!note) return;
+        note.favorite = !note.favorite;
+        note.updatedAt = new Date().toISOString();
+        this.classList.toggle('active', note.favorite);
+        queueSave();
+        renderList();
+      });
+      document.getElementById('pinBtn').addEventListener('click', function () {
+        var note = currentNote();
+        if (!note) return;
+        note.pinned = !note.pinned;
+        note.updatedAt = new Date().toISOString();
+        this.classList.toggle('active', note.pinned);
+        queueSave();
+        renderList();
+      });
+      document.getElementById('addTagBtn').addEventListener('click', addTag);
+      document.getElementById('noteTags').addEventListener('click', function (event) {
+        var button = event.target.closest('.note-tag-remove');
+        var note = currentNote();
+        if (!button || !note) return;
+        note.tags.splice(Number(button.dataset.tagIndex), 1);
+        note.updatedAt = new Date().toISOString();
+        queueSave();
+        renderTagFilter();
+        renderTags(note);
+        renderList();
+      });
+
+      document.getElementById('moreBtn').addEventListener('click', function (event) {
+        event.stopPropagation();
+        var showing = moreMenu.classList.toggle('show');
+        this.setAttribute('aria-expanded', String(showing));
+      });
+      moreMenu.addEventListener('click', function (event) {
+        var button = event.target.closest('.note-menu-item');
+        if (!button) return;
+        moreMenu.classList.remove('show');
+        document.getElementById('moreBtn').setAttribute('aria-expanded', 'false');
+        if (button.dataset.action === 'duplicate') duplicateNote();
+        if (button.dataset.action === 'export') exportNote();
+        if (button.dataset.action === 'archive') toggleArchive();
+        if (button.dataset.action === 'delete') deleteNote();
+      });
+      document.addEventListener('click', function (event) {
+        if (!event.target.closest('.note-head-actions')) {
+          moreMenu.classList.remove('show');
+          document.getElementById('moreBtn').setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      document.addEventListener('keydown', function (event) {
+        var mod = event.ctrlKey || event.metaKey;
+        if (mod && event.key.toLowerCase() === 'n') { event.preventDefault(); createNote(); }
+        if (mod && event.key.toLowerCase() === 's') { event.preventDefault(); syncEditorToNote(); persistNow(true); renderList(); }
+        if (mod && event.shiftKey && event.key.toLowerCase() === 'd') { event.preventDefault(); duplicateNote(); }
+        if (event.key === 'Escape') moreMenu.classList.remove('show');
+      });
+
+      window.addEventListener('beforeunload', function () {
+        if (!isReady) return;
+        syncEditorToNote();
+        persistNow(false);
+      });
+
+      window.onAuthReady = function (session) {
+        if (!session || isReady) return;
+        storageKey = 'seminyak-admin-notes-v1:' + session.user.id;
+        isReady = true;
+        loadNotes();
+      };
+    })();
+  </script>
+
+  <script src="sidebar-loader.js?v=20260721-1"></script>
+</body>
+</html>

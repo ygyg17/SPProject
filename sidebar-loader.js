@@ -11,7 +11,7 @@
 (function () {
   var container = document.getElementById('sidebar-container');
   if (!container) return;
-  var assetVersion = '20260708-2';
+  var assetVersion = '20260721-1';
 
   fetch('sidebar.html?v=' + assetVersion, { cache: 'no-store' })
     .then(function (res) {
@@ -39,6 +39,24 @@
         link.classList.add('active');
       }
     });
+
+    // Menu tertentu hanya ditampilkan untuk role yang diizinkan.
+    // Role berasal dari app_metadata (bukan user_metadata) agar tidak bisa diubah user.
+    var roleLinks = document.querySelectorAll('.sidebar-link[data-nav-role]');
+    if (roleLinks.length && window.SeminyakAuth) {
+      window.SeminyakAuth.getSession().then(function (session) {
+        var role = String(session && session.user && session.user.app_metadata
+          ? session.user.app_metadata.role || ''
+          : '').trim().toLowerCase();
+        roleLinks.forEach(function (link) {
+          var allowed = String(link.getAttribute('data-nav-role') || '')
+            .split(',').map(function (item) { return item.trim().toLowerCase(); }).filter(Boolean);
+          link.hidden = !role || allowed.indexOf(role) === -1;
+        });
+      }).catch(function () {
+        roleLinks.forEach(function (link) { link.hidden = true; });
+      });
+    }
 
     // Toggle sidebar mobile — tombol & overlay ada di halaman utama (topbar)
     var sidebar = document.getElementById('sidebar');
