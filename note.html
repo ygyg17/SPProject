@@ -192,7 +192,7 @@
           </div>
         </div>
 
-        <div class="note-editor-ui" id="noteEditorUi">
+        <div class="note-editor-ui hidden-editor" id="noteEditorUi">
           <header class="note-editor-head">
             <div class="note-save-state" id="saveState"><span class="note-save-dot"></span><span id="saveStateText">Saved</span></div>
             <div class="note-head-actions">
@@ -284,6 +284,7 @@
       var saveTimer = null;
       var saveChain = Promise.resolve();
       var saveSequence = 0;
+      var pendingSave = null;
       var isReady = false;
 
       var notesList = document.getElementById('notesList');
@@ -526,10 +527,10 @@
         renderAll();
       }
 
-      function persistNote(note, showConfirmation) {
+      function persistNote(note, showConfirmation, sequence) {
         if (!supabaseClient || !currentUserId || !note) return Promise.resolve(false);
         var row = noteToRow(normalizeNote(note));
-        var sequence = ++saveSequence;
+        sequence = typeof sequence === 'number' ? sequence : ++saveSequence;
         saveState.classList.add('saving');
         saveStateText.textContent = 'Saving to Supabase...';
 
@@ -559,14 +560,26 @@
       function persistNow(showConfirmation) {
         clearTimeout(saveTimer);
         saveTimer = null;
+        var pending = pendingSave;
+        pendingSave = null;
+        if (pending) return persistNote(pending.note, showConfirmation, pending.sequence);
         return persistNote(currentNote(), showConfirmation);
       }
 
       function queueSave() {
+        var note = currentNote();
+        if (!note) return;
+        var sequence = ++saveSequence;
+        pendingSave = { note: note, sequence: sequence };
         saveState.classList.add('saving');
         saveStateText.textContent = 'Saving to Supabase...';
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(function () { persistNow(false); }, 400);
+        saveTimer = setTimeout(function () {
+          saveTimer = null;
+          var pending = pendingSave;
+          pendingSave = null;
+          if (pending) persistNote(pending.note, false, pending.sequence);
+        }, 400);
       }
 
       function syncEditorToNote() {
@@ -706,22 +719,27 @@
         if (!note || !confirm('Delete this note permanently?')) return;
         clearTimeout(saveTimer);
         saveTimer = null;
-        await saveChain;
-        var result = await supabaseClient
-          .from('admin_notes')
-          .delete()
-          .eq('user_id', currentUserId)
-          .eq('id', note.id)
-          .select('id');
-        if (result.error || !result.data || !result.data.length) {
-          showToast('toastErr', 'toastErrMsg', 'Supabase delete failed: ' + (result.error ? result.error.message : 'note not found'));
-          return;
+        pendingSave = null;
+        try {
+          await saveChain;
+          var result = await supabaseClient
+            .from('admin_notes')
+            .delete()
+            .eq('user_id', currentUserId)
+            .eq('id', note.id)
+            .select('id');
+          if (result.error || !result.data || !result.data.length) {
+            throw result.error || new Error('note not found');
+          }
+          notes = notes.filter(function (item) { return item.id !== note.id; });
+          var filtered = getFilteredNotes();
+          selectedId = filtered[0] ? filtered[0].id : (notes[0] ? notes[0].id : '');
+          cacheNotes();
+          renderAll();
+          showToast('toastOk', 'toastOkMsg', 'Note deleted');
+        } catch (error) {
+          showToast('toastErr', 'toastErrMsg', 'Supabase delete failed: ' + (error.message || String(error)));
         }
-        notes = notes.filter(function (item) { return item.id !== note.id; });
-        selectedId = getFilteredNotes()[0] ? getFilteredNotes()[0].id : (notes[0] ? notes[0].id : '');
-        cacheNotes();
-        renderAll();
-        showToast('toastOk', 'toastOkMsg', 'Note deleted');
       }
 
       function toggleArchive() {
@@ -837,6 +855,8 @@
       document.getElementById('noteViews').addEventListener('click', function (event) {
         var button = event.target.closest('.note-view-btn');
         if (!button) return;
+        syncEditorToNote();
+        persistNow(false);
         activeView = button.dataset.view;
         document.querySelectorAll('.note-view-btn').forEach(function (item) { item.classList.toggle('active', item === button); });
         var filtered = getFilteredNotes();
@@ -952,14 +972,12 @@
       });
 
       window.addEventListener('beforeunload', function () {
-        if (!isReady) return;
-        syncEditorToNote();
+        if (!isReady || !pendingSave) return;
         persistNow(false);
       });
 
       document.addEventListener('visibilitychange', function () {
-        if (!isReady || document.visibilityState !== 'hidden') return;
-        syncEditorToNote();
+        if (!isReady || !pendingSave || document.visibilityState !== 'hidden') return;
         persistNow(false);
       });
 
