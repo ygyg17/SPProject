@@ -34,6 +34,12 @@ html, body {
 }
 
 /* ─── NAV BAR ─── */
+#header-container {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
 .topbar {
   height: 52px;
   border-bottom: 1px solid var(--line);
@@ -42,9 +48,6 @@ html, body {
   align-items: center;
   padding: 0 28px;
   gap: 14px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
 }
 
 .brand-mark { width: 28px; height: 28px; border-radius: 6px; background: var(--gold); display: flex; align-items: center; justify-content: center; }
