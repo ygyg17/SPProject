@@ -67,15 +67,26 @@
     function openSidebar() { sidebar.classList.add('open'); if (overlay) overlay.classList.add('show'); }
     function closeSidebar() { sidebar.classList.remove('open'); if (overlay) overlay.classList.remove('show'); }
 
-    if (menuBtn) {
+    if (menuBtn && !menuBtn.dataset.sidebarBound) {
+      menuBtn.dataset.sidebarBound = 'true';
       menuBtn.addEventListener('click', function () {
         sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
       });
     }
-    if (overlay) overlay.addEventListener('click', closeSidebar);
+    if (overlay && !overlay.dataset.sidebarBound) {
+      overlay.dataset.sidebarBound = 'true';
+      overlay.addEventListener('click', closeSidebar);
+    }
 
     document.querySelectorAll('.sidebar-link').forEach(function (link) {
-      link.addEventListener('click', closeSidebar);
+      if (!link.dataset.sidebarBound) {
+        link.dataset.sidebarBound = 'true';
+        link.addEventListener('click', closeSidebar);
+      }
     });
   }
+
+  // Header dan sidebar sama-sama dimuat via fetch. Jalankan ulang binding bila
+  // header selesai belakangan agar tombol hamburger tetap berfungsi.
+  document.addEventListener('header:loaded', initSidebar);
 })();

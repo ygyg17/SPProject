@@ -12,18 +12,10 @@
   <script src="auth.js"></script>
 </head>
 
-<body data-active-page="design" data-require-role="admin">
+<body data-active-page="design" data-require-role="admin" data-header-title="Design Requests">
 
-  <nav class="topbar">
-    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Buka menu">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-    <img class="topbar-logo" src="images/Logo.png" alt="The Seminyak">
-    <div class="topbar-div"></div>
-    <span class="topbar-title">Design Requests</span>
-    <div id="authUserBox"></div>
-    <div class="topbar-clock" id="mastClock">—</div>
-  </nav>
+  <div id="header-container"></div>
+  <script src="header-loader.js?v=20260728-1"></script>
 
   <div id="sidebar-container"></div>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -113,15 +105,6 @@
     // (contoh: https://guobvhghlrlgcqbfgzdn.supabase.co/functions/v1/design-request-api)
     const REQ_API_URL = (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.DESIGN_API_URL)
       || (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.URL + '/functions/v1/design-request-api');
-
-    /* ─── Clock ─── */
-    function tickClock() {
-      const now = new Date();
-      const d = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-      const t = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      document.getElementById('mastClock').innerHTML = d + '&nbsp;&nbsp;<b>' + t + '</b>';
-    }
-    tickClock(); setInterval(tickClock, 30000);
 
     /* ─── Utils ─── */
     function showToast(id, msgId, msg, dur) {

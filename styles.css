@@ -52,8 +52,7 @@ html, body {
 .topbar-logo { height: 24px; object-fit: contain; }
 .topbar-div { width: 1px; height: 20px; background: var(--line); }
 .topbar-title { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: .01em; }
-.topbar-clock { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); line-height: 1.4; text-align: right; }
-.topbar-clock b { color: var(--ink-2); font-weight: 500; }
+#authUserBox { margin-left: auto; display: flex; align-items: center; }
 
 /* ─── LAYOUT ─── */
 .body-wrap { display: grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 52px); max-width: 100%; }

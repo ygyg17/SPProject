@@ -101,17 +101,9 @@
     @media (max-width:390px) { .metric-grid { grid-template-columns:1fr; } }
   </style>
 </head>
-<body data-active-page="dashboard" data-require-role="admin,staff">
-  <nav class="topbar">
-    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Open menu">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-    <img class="topbar-logo" src="images/Logo.png" alt="The Seminyak">
-    <div class="topbar-div"></div>
-    <span class="topbar-title">Dashboard</span>
-    <div id="authUserBox"></div>
-    <div class="topbar-clock" id="mastClock">-</div>
-  </nav>
+<body data-active-page="dashboard" data-require-role="admin,staff" data-header-title="Dashboard">
+  <div id="header-container"></div>
+  <script src="header-loader.js?v=20260728-1"></script>
 
   <div id="sidebar-container"></div>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -196,10 +188,6 @@
       if (diff === 0) return 'Today';
       if (diff === 1) return 'Tomorrow';
       return fmtDate(value);
-    }
-    function tickClock() {
-      const now = new Date();
-      document.getElementById('mastClock').innerHTML = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) + '&nbsp;&nbsp;<b>' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) + '</b>';
     }
     function setPageDate() {
       const now = new Date();
@@ -323,7 +311,7 @@
       button.classList.remove('loading');
     }
 
-    tickClock(); setInterval(tickClock,30000); setPageDate();
+    setPageDate();
     document.getElementById('refreshBtn').addEventListener('click',loadDashboard);
     window.onAuthReady=function(){loadDashboard();};
   </script>

@@ -68,22 +68,10 @@
   }
 </style>
 </head>
-<body data-active-page="administration" data-require-role="admin,staff">
+<body data-active-page="administration" data-require-role="admin,staff" data-header-title="Administration">
 
-<div class="topbar">
-  <button class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="3" y1="6" x2="21" y2="6"></line>
-      <line x1="3" y1="12" x2="21" y2="12"></line>
-      <line x1="3" y1="18" x2="21" y2="18"></line>
-    </svg>
-  </button>
-  <img class="topbar-logo" src="images/Logo.png" alt="The Seminyak">
-  <div class="topbar-div"></div>
-  <span class="topbar-title">Administration</span>
-  <div id="authUserBox"></div>
-  <span class="topbar-clock" id="topbarClock"></span>
-</div>
+<div id="header-container"></div>
+<script src="header-loader.js?v=20260728-1"></script>
 
 <div id="sidebar-container"></div>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -289,17 +277,6 @@
   const tableBody = document.getElementById('tableBody');
   const typeChips = document.getElementById('typeChips');
   const statusTabs = document.getElementById('statusTabs');
-
-  function tickClock() {
-    const el = document.getElementById('topbarClock');
-    if (!el) return;
-    const now = new Date();
-    const opts = { weekday: 'short', day: '2-digit', month: 'short' };
-    el.innerHTML = now.toLocaleDateString('en-GB', opts) + ' <b>' +
-      now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '</b>';
-  }
-  tickClock();
-  setInterval(tickClock, 1000);
 
   function showToast(msg, ok) {
     const toast = document.getElementById('toast');

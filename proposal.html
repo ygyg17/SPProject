@@ -92,18 +92,10 @@
   @media (max-width: 520px) { .edit-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
-<body data-active-page="proposal" data-require-role="admin,staff">
+<body data-active-page="proposal" data-require-role="admin,staff" data-header-title="Proposal Marketing">
 
-  <nav class="topbar">
-    <button type="button" class="sidebar-menu-btn" id="sidebarMenuBtn" aria-label="Buka menu">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-    <img class="topbar-logo" src="images/Logo.png" alt="The Seminyak">
-    <div class="topbar-div"></div>
-    <span class="topbar-title">Proposal Marketing</span>
-    <div id="authUserBox"></div>
-    <div class="topbar-clock" id="mastClock">—</div>
-  </nav>
+  <div id="header-container"></div>
+  <script src="header-loader.js?v=20260728-1"></script>
 
   <div id="sidebar-container"></div>
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -268,16 +260,6 @@
     let sortMode = 'propose-desc';
     let modalMode = 'edit';
     let editingId = null;
-
-    function tickClock() {
-      const el = document.getElementById('mastClock');
-      const now = new Date();
-      const d = now.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
-      const t = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      el.innerHTML = `${d}<br><b>${t}</b>`;
-    }
-    tickClock();
-    setInterval(tickClock, 1000);
 
     function normalizeItem(raw) {
       return {
