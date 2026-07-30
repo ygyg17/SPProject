@@ -22,14 +22,6 @@
     cursor: pointer; transition: background .15s; white-space: nowrap;
   }
   .btn-add:hover { background: var(--gold-hover); }
-  .btn-connect {
-    display: none; align-items: center; gap: 6px; padding: 8px 12px;
-    border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
-    color: var(--muted); font-family: 'Inter', sans-serif; font-size: 11px;
-    font-weight: 600; cursor: pointer; white-space: nowrap;
-  }
-  .btn-connect.visible { display: inline-flex; }
-  .btn-connect:hover { color: var(--gold); border-color: var(--gold); }
 
   .filter-bar { 
     display: flex; 
@@ -152,7 +144,6 @@
         </div>
         <div class="header-actions">
           <span class="count-badge" id="countBadge">0 proposal</span>
-          <button class="btn-connect" id="btnConnectDrive">Hubungkan Google Drive</button>
           <button class="btn-add" id="btnAddNew">+ Proposal Baru</button>
         </div>
       </div>
@@ -306,7 +297,6 @@
   <script>
     const sbProposal = SeminyakAuth.getClient();
     const PROPOSAL_BUCKET = 'proposal-files';
-    const PROPOSAL_DRIVE_API_URL = SUPABASE_CONFIG.PROPOSAL_DRIVE_API_URL;
     const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     let allItems = [];
@@ -318,8 +308,7 @@
     let editingId = null;
     let formAttachments = { Files: [], Invoice: [] };
     let pendingUploads = { Files: [], Invoice: [] };
-    let removedAttachments = [];
-    let currentUserRole = 'user';
+    let removedStoragePaths = [];
 
     function normalizeItem(raw) {
       return {
@@ -482,7 +471,7 @@
         Invoice: [...(item.Invoice || [])]
       };
       pendingUploads = { Files: [], Invoice: [] };
-      removedAttachments = [];
+      removedStoragePaths = [];
       renderAttachmentList('Files');
       renderAttachmentList('Invoice');
     }
@@ -504,10 +493,6 @@
 
     function isExternalUrl(value) {
       return /^https?:\/\//i.test(value || '');
-    }
-
-    function isGoogleDriveUrl(value) {
-      return /^https:\/\/drive\.google\.com\//i.test(value || '');
     }
 
     function displayFileName(value) {
@@ -544,7 +529,7 @@
         <div class="attachment-row">
           <span class="attachment-name" title="${escapeHtml(displayFileName(value))}">${escapeHtml(displayFileName(value))}</span>
           <button type="button" class="attachment-action" data-kind="${kind}" data-existing-index="${index}">Buka</button>
-          ${currentUserRole === 'admin' ? `<button type="button" class="attachment-action remove" data-kind="${kind}" data-remove-existing="${index}">Hapus</button>` : ''}
+          <button type="button" class="attachment-action remove" data-kind="${kind}" data-remove-existing="${index}">Hapus</button>
         </div>`).join('');
 
       const pendingHtml = pending.map((file, index) => `
@@ -604,13 +589,9 @@
       }
 
       if (button.dataset.removeExisting !== undefined) {
-        if (currentUserRole !== 'admin') {
-          showToast('Hanya admin yang dapat menghapus file', 'err');
-          return;
-        }
         const index = Number(button.dataset.removeExisting);
         const [removed] = formAttachments[kind].splice(index, 1);
-        if (removed) removedAttachments.push(removed);
+        if (removed && !isExternalUrl(removed)) removedStoragePaths.push(removed);
         renderAttachmentList(kind);
         return;
       }
@@ -632,74 +613,40 @@
       });
     }
 
-    async function driveApi(action, payload = {}) {
-      const session = await SeminyakAuth.getSession();
-      if (!session) {
-        window.location.href = SUPABASE_CONFIG.LOGIN_PAGE;
-        throw new Error('Session expired');
-      }
-
-      const response = await fetch(PROPOSAL_DRIVE_API_URL, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action, ...payload })
-      });
-      const result = await response.json().catch(() => ({}));
-
-      if (response.status === 401 || result.authError) {
-        await sbProposal.auth.signOut();
-        window.location.href = SUPABASE_CONFIG.LOGIN_PAGE;
-        throw new Error('Session expired');
-      }
-      if (response.status === 403 || result.forbidden) {
-        throw new Error(result.error || 'Tidak memiliki izin');
-      }
-      if (!response.ok) {
-        throw new Error(result.error || `Google Drive error (${response.status})`);
-      }
-      return result;
-    }
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-        reader.onerror = () => reject(reader.error || new Error('Gagal membaca file'));
-        reader.readAsDataURL(file);
-      });
+    function sanitizeFileName(fileName) {
+      const cleaned = String(fileName || 'file')
+        .normalize('NFKD')
+        .replace(/[^\w.-]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      return (cleaned || 'file').slice(-120);
     }
 
     async function uploadPendingFiles(proposalId) {
       const uploaded = { Files: [], Invoice: [] };
-      const uploadedUrls = [];
+      const uploadedPaths = [];
 
       try {
         for (const kind of ['Files', 'Invoice']) {
+          const folder = kind === 'Files' ? 'files' : 'invoice';
           for (const file of pendingUploads[kind]) {
-            const result = await driveApi('upload', {
-              proposalId,
-              category: kind,
-              file: {
-                name: file.name,
-                mimeType: file.type || 'application/octet-stream',
-                base64: await fileToBase64(file)
-              }
-            });
-            uploaded[kind].push(result.url);
-            uploadedUrls.push(result.url);
+            const path = `${proposalId}/${folder}/${makeUuid()}-${sanitizeFileName(file.name)}`;
+            const { error } = await sbProposal.storage
+              .from(PROPOSAL_BUCKET)
+              .upload(path, file, {
+                cacheControl: '3600',
+                contentType: file.type || 'application/octet-stream',
+                upsert: false
+              });
+            if (error) throw error;
+            uploaded[kind].push(path);
+            uploadedPaths.push(path);
           }
         }
-        return { uploaded, uploadedUrls };
+        return { uploaded, uploadedPaths };
       } catch (err) {
-        if (currentUserRole === 'admin') {
-          for (const url of uploadedUrls) {
-            await driveApi('delete', { url }).catch(cleanupError =>
-              console.error('Gagal membersihkan upload Google Drive:', cleanupError)
-            );
-          }
+        if (uploadedPaths.length) {
+          await sbProposal.storage.from(PROPOSAL_BUCKET).remove(uploadedPaths);
         }
         throw err;
       }
@@ -730,31 +677,6 @@
       editingId = null;
     }
 
-    SeminyakAuth.getSession().then(session => {
-      currentUserRole = String(session?.user?.app_metadata?.role || 'user').toLowerCase();
-      document.getElementById('btnConnectDrive').classList.toggle('visible', currentUserRole === 'admin');
-    });
-
-    document.getElementById('btnConnectDrive').addEventListener('click', async () => {
-      const popup = window.open('about:blank', 'proposal-drive-oauth', 'width=560,height=720');
-      try {
-        const result = await driveApi('oauthUrl');
-        if (popup) {
-          popup.location.href = result.url;
-        } else {
-          window.location.href = result.url;
-        }
-      } catch (err) {
-        if (popup) popup.close();
-        showToast('Gagal memulai koneksi Google Drive: ' + err.message, 'err');
-      }
-    });
-
-    window.addEventListener('message', event => {
-      if (event.data?.type !== 'proposal-drive-oauth') return;
-      showToast(event.data.ok ? 'Google Drive berhasil dihubungkan' : 'Koneksi Google Drive gagal', event.data.ok ? 'ok' : 'err');
-    });
-
     document.getElementById('btnAddNew').addEventListener('click', openCreateModal);
     document.getElementById('detailClose').addEventListener('click', closeDetail);
     document.getElementById('detailCancel').addEventListener('click', closeDetail);
@@ -779,12 +701,11 @@
       saveBtn.disabled = true;
       label.textContent = 'Menyimpan...';
 
-      let uploadedUrls = [];
-      let databaseSaved = false;
+      let uploadedPaths = [];
       try {
         const proposalId = modalMode === 'create' ? makeUuid() : editingId;
         const uploadResult = await uploadPendingFiles(proposalId);
-        uploadedUrls = uploadResult.uploadedUrls;
+        uploadedPaths = uploadResult.uploadedPaths;
         fields.Files = [...formAttachments.Files, ...uploadResult.uploaded.Files];
         fields.Invoice = [...formAttachments.Invoice, ...uploadResult.uploaded.Invoice];
         const dbFields = toDbFields(fields);
@@ -805,31 +726,20 @@
           if (idx > -1) allItems[idx] = normalizeItem(data);
           showToast('Perubahan berhasil disimpan', 'ok');
         }
-        databaseSaved = true;
 
-        const removedStoragePaths = removedAttachments.filter(value => !isExternalUrl(value));
         if (removedStoragePaths.length) {
           const { error: removeError } = await sbProposal.storage
             .from(PROPOSAL_BUCKET)
             .remove([...new Set(removedStoragePaths)]);
           if (removeError) console.error('Gagal menghapus file lama:', removeError);
         }
-        for (const url of [...new Set(removedAttachments.filter(isGoogleDriveUrl))]) {
-          await driveApi('delete', { url }).catch(removeError =>
-            console.error('Gagal menghapus file Google Drive lama:', removeError)
-          );
-        }
 
         buildYearSelect();
         applyFilters();
         closeDetail();
       } catch (err) {
-        if (!databaseSaved && currentUserRole === 'admin') {
-          for (const url of uploadedUrls) {
-            await driveApi('delete', { url }).catch(cleanupError =>
-              console.error('Gagal membersihkan upload Google Drive:', cleanupError)
-            );
-          }
+        if (uploadedPaths.length) {
+          await sbProposal.storage.from(PROPOSAL_BUCKET).remove(uploadedPaths);
         }
         console.error(err);
         showToast('Gagal menyimpan: ' + err.message, 'err');
