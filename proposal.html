@@ -261,7 +261,7 @@
           <div class="file-picker">
             <input type="file" id="f_Files" multiple>
             <label for="f_Files" class="file-picker-btn">+ Pilih File</label>
-            <span class="file-picker-hint">File tersimpan di Supabase, maks. 10 MB per file.</span>
+            <span class="file-picker-hint">Max. 1 MB per file.</span>
           </div>
           <div class="attachment-list" id="filesAttachmentList"></div>
         </div>
@@ -297,7 +297,7 @@
   <script>
     const sbProposal = SeminyakAuth.getClient();
     const PROPOSAL_BUCKET = 'proposal-files';
-    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
     let allItems = [];
     let filteredItems = [];
@@ -546,7 +546,7 @@
       const files = Array.from(selectedFiles || []);
       const tooLarge = files.find(file => file.size > MAX_FILE_SIZE);
       if (tooLarge) {
-        showToast(`${tooLarge.name} melebihi batas 10 MB`, 'err');
+        showToast(`${tooLarge.name} melebihi batas 1 MB`, 'err');
       }
 
       files.filter(file => file.size <= MAX_FILE_SIZE).forEach(file => {
