@@ -33,7 +33,6 @@ html, body {
   max-width: 100%;
 }
 
-/* ─── NAV BAR ─── */
 #header-container {
   position: sticky;
   top: 0;
@@ -57,12 +56,10 @@ html, body {
 .topbar-title { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: .01em; }
 #authUserBox { margin-left: auto; display: flex; align-items: center; }
 
-/* ─── LAYOUT ─── */
 .body-wrap { display: grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 52px); max-width: 100%; }
 .body-wrap.single-page { display: block; min-height: calc(100vh - 52px); }
 .body-wrap.single-page .right-panel { width: 100%; max-width: none; margin: 0; }
 
-/* ─── LEFT PANEL ─── */
 .left-panel { border-right: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; }
 .left-inner { padding: 32px 28px 40px; position: sticky; top: 52px; max-height: calc(100vh - 52px); overflow-y: auto; }
 
@@ -70,7 +67,6 @@ html, body {
 .panel-heading { font-size: 22px; font-weight: 700; color: var(--ink); line-height: 1.25; letter-spacing: -.02em; margin-bottom: 6px; }
 .panel-sub { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
 
-/* Type toggle */
 .type-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
 .type-row input { display: none; }
 .type-label { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; transition: .18s ease; user-select: none; }
@@ -82,7 +78,6 @@ html, body {
 .divider-line { flex: 1; height: 1px; background: var(--line); }
 .divider-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 
-/* Fields */
 .field { margin-bottom: 18px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .field > label, .field-row .field > label { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-2); letter-spacing: .02em; margin-bottom: 7px; }
@@ -95,7 +90,6 @@ select { appearance: none; -webkit-appearance: none; background-image: url("data
 textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 .hidden { display: none !important; }
 
-/* Submit button */
 .btn-primary { width: 100%; margin-top: 8px; padding: 14px 20px; background: var(--gold); color: #fff; border: none; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 9px; transition: background .18s, transform .1s; letter-spacing: .01em; }
 .btn-primary:hover { background: var(--gold-hover); }
 .btn-primary:active { transform: scale(.99); }
@@ -106,7 +100,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 
 .footer-note { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
 
-/* ─── RIGHT PANEL ─── */
 .right-panel { padding: 32px 28px 60px; max-width: 100%; overflow-x: hidden; }
 .board-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
 .page-header { align-items: center; }
@@ -119,7 +112,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 .btn-add:active { transform: scale(.98); }
 .help-note { margin-top: 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 
-/* Filter bar */
 .filter-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
 .search-wrap { position: relative; flex: 0 0 180px; }
 .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 13px; height: 13px; color: var(--muted); pointer-events: none; }
@@ -142,7 +134,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 .state-spinner { width: 26px; height: 26px; border: 2px solid var(--line); border-top-color: var(--gold); border-radius: 50%; margin: 0 auto 14px; animation: spin .8s linear infinite; }
 .state-error { color: var(--urgent); } .state-error .state-icon { opacity: 1; }
 
-/* Task rows */
 .task-row { display: flex; align-items: flex-start; gap: 0; padding: 0; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .15s; position: relative; }
 .task-row:last-child { border-bottom: none; }
 .task-row:hover { background: var(--bg); }
@@ -174,7 +165,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 .btn-sm.edit:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
 .btn-sm.done:hover { border-color: var(--ok); color: var(--ok); background: var(--ok-bg); }
 
-/* ─── TOAST / MODAL ─── */
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(12px); padding: 11px 20px 11px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 10px; opacity: 0; visibility: hidden; transition: .25s cubic-bezier(.34,1.56,.64,1); z-index: 10000; max-width: min(92vw, 380px); box-shadow: 0 4px 20px rgba(0,0,0,.12); }
 .toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
 .toast-ok { background: #052e16; color: #bbf7d0; }
@@ -202,7 +192,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 .btn-secondary:hover { background: var(--bg); border-color: var(--line-2); }
 .modal-actions .btn-primary { flex: 2; margin-top: 0; }
 
-/* ─── CALENDAR / WRAPPERS ─── */
 .calendar-wrap, .design-req-wrap { display: none; }
 .calendar-wrap.show, .design-req-wrap.show { display: block; }
 .board-list-wrap { display: block; }
@@ -243,7 +232,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 .cal-detail-close:hover { color: var(--ink); border-color: var(--ink); }
 .cal-detail-list { padding: 8px 0; }
 
-/* ─── DESIGN REQUEST VIEW & TABLE ─── */
 .stats-strip { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .stat-pill { background: var(--surface); border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 100px; }
 .stat-num { font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--ink); }
@@ -257,17 +245,14 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 .req-table tbody tr { transition: background .12s; cursor: pointer; }
 .req-table tbody tr:hover { background: var(--bg); }
 
-/* Grid untuk modal detail request */
 .req-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .req-field { display: flex; flex-direction: column; gap: 4px; }
 .req-field span { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .req-field strong { font-size: 13.5px; font-weight: 500; color: var(--ink); }
 
-/* WA float */
 .wa-float { position: fixed; right: 20px; bottom: 20px; z-index: 8000; background: #128C7E; color: #fff; text-decoration: none; padding: 11px 18px; border-radius: 999px; display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; box-shadow: 0 6px 20px rgba(18,140,126,.25); transition: .18s ease; }
 .wa-float:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(18,140,126,.3); }
 
-/* ─── RESPONSIVE ─── */
 @media (max-width: 860px) {
   .body-wrap { grid-template-columns: 1fr; }
   .left-panel { border-right: none; border-bottom: 1px solid var(--line); }
@@ -300,7 +285,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
   .stat-pill { min-width: 100%; }
 }
 
-/* ─── MOBILE: DESIGN REQUEST AS CARDS (FIX: tabel melebar ke samping) ─── */
 @media (max-width: 700px) {
   .table-wrapper { overflow-x: visible; }
 
@@ -320,7 +304,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
     word-break: break-word;
   }
 
-  /* Label di depan tiap kolom, dari data-label yang akan ditambahkan di JS */
   .req-table td[data-label]::before {
     content: attr(data-label);
     display: block;
@@ -342,7 +325,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
   .req-table td:last-child::before { content: none; }
 }
 
-/* ─── SIDEBAR NAV (kompatibel dengan topbar fixed + body-wrap) ─── */
 :root { --sidebar-w: 220px; }
 
 .sidebar {
@@ -426,7 +408,6 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
 }
 .sidebar-overlay.show { display: block; }
 
-/* Konten utama digeser ke kanan sejauh lebar sidebar */
 .body-wrap { margin-left: var(--sidebar-w); }
 
 @media (max-width: 860px) {
@@ -435,19 +416,16 @@ textarea { min-height: 88px; resize: vertical; line-height: 1.55; }
   .sidebar-menu-btn { display: flex; }
   .body-wrap { margin-left: 0; }
 }
-/* ─── LOGIN PAGE ─── */
 .login-body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
 .login-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 32px 28px; box-shadow: 0 20px 40px rgba(0,0,0,.06); }
 .login-logo { display: block; height: 30px; object-fit: contain; margin: 0 auto 22px; }
 .login-title { font-size: 18px; font-weight: 700; color: var(--ink); text-align: center; margin-bottom: 4px; }
 .login-sub { font-size: 12.5px; color: var(--muted); text-align: center; margin-bottom: 26px; }
 
-/* Posisi tombol mata untuk lihat password */
 .password-wrapper { position: relative; display: flex; align-items: center; }
 .password-wrapper input { padding-right: 40px; box-sizing: border-box; }
 .toggle-password { position: absolute; right: 12px; background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; outline: none; }
 .toggle-password:hover { color: var(--ink); }
 
-/* Peringatan error login */
 .login-error { display: none; background: var(--urgent-bg); color: var(--urgent); font-size: 12.5px; font-weight: 500; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
 .login-error.show { display: block; }

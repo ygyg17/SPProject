@@ -51,7 +51,6 @@
     const params = new URLSearchParams(location.search);
     const next = params.get('next') || 'index.html';
 
-    // Toggle show/hide password
     const pwInput = document.getElementById('password');
     const toggleBtn = document.getElementById('togglePassword');
     const eyeIcon = document.getElementById('eyeIcon');
@@ -63,7 +62,6 @@
       eyeIcon.innerHTML = showing ? eyeOpen : eyeClosed;
     });
 
-    // Submit login
     const form = document.getElementById('loginForm');
     const errBox = document.getElementById('err');
     const btn = document.getElementById('loginBtn');

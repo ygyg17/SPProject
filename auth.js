@@ -1,16 +1,10 @@
-// auth.js — pengganti versi Apps Script/token custom, sekarang pakai Supabase Auth.
-// Load supabase-js dulu SEBELUM file ini, contoh di <head>:
-//   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-//   <script src="config.js"></script>
-//   <script src="auth.js"></script>
-
 const _sb = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
 
 const SeminyakAuth = (function () {
 
   async function getSession() {
     const { data } = await _sb.auth.getSession();
-    return data.session; // null kalau belum login
+    return data.session;
   }
 
   function getClient() {
@@ -27,7 +21,6 @@ const SeminyakAuth = (function () {
       session.user.app_metadata?.role ||
       'user'
     ).trim().toLowerCase();
-    // Dukung multi-role dipisah koma, contoh: data-require-role="admin,staff"
     const allowedRoles = String(requiredRoleAttr || '').split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
     if (allowedRoles.length && !allowedRoles.includes(role)) {
       showNoAccessAndGoBack();
@@ -37,7 +30,6 @@ const SeminyakAuth = (function () {
   }
 
   function showNoAccessAndGoBack() {
-    // Hentikan render halaman asli, ganti dengan pesan "Tidak ada akses"
     document.title = 'Tidak ada akses';
     document.body.innerHTML = `
       <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
@@ -62,8 +54,6 @@ const SeminyakAuth = (function () {
     window.location.href = `${SUPABASE_CONFIG.LOGIN_PAGE}?next=${next}`;
   }
 
-  // Pengganti fetch biasa: otomatis menyisipkan Authorization: Bearer <access_token>
-  // dan menangani sesi habis (authError) seperti versi lama.
   async function authFetch(url, options = {}) {
     const session = await getSession();
     const headers = Object.assign({}, options.headers, {
@@ -100,7 +90,6 @@ const SeminyakAuth = (function () {
     window.location.href = SUPABASE_CONFIG.LOGIN_PAGE;
   }
 
-  // Render kotak user kecil di topbar (id="authUserBox"), sama seperti versi lama.
   async function renderUserBox() {
     const box = document.getElementById('authUserBox');
     if (!box) return;
@@ -112,8 +101,6 @@ const SeminyakAuth = (function () {
     document.getElementById('logoutBtn').addEventListener('click', signOut);
   }
 
-  // Jalankan otomatis: cek role yang diwajibkan lewat data-require-role di <body>
-  // (persis seperti body[data-require-role="admin"] di HTML lama)
   document.addEventListener('DOMContentLoaded', async () => {
     const requiredRole = document.body.dataset.requireRole;
     const session = requiredRole ? await requireRole(requiredRole) : await getSession();
@@ -127,7 +114,4 @@ const SeminyakAuth = (function () {
   return { getClient, getSession, requireRole, authFetch, signIn, signOut, renderUserBox };
 })();
 
-// PENTING: assign eksplisit ke window — `const` di top-level TIDAK otomatis
-// menempel ke window, padahal halaman lain (mis. administration.html) mengecek
-// `window.SeminyakAuth` secara langsung.
 window.SeminyakAuth = SeminyakAuth;

@@ -100,13 +100,9 @@
   </div>
 
   <script>
-    // Edge Function pengganti REQ_SCRIPT_URL (Code.gs / Apps Script).
-    // Ambil dari config.js: SUPABASE_CONFIG.DESIGN_API_URL
-    // (contoh: https://guobvhghlrlgcqbfgzdn.supabase.co/functions/v1/design-request-api)
     const REQ_API_URL = (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.DESIGN_API_URL)
       || (window.SUPABASE_CONFIG && window.SUPABASE_CONFIG.URL + '/functions/v1/design-request-api');
 
-    /* ─── Utils ─── */
     function showToast(id, msgId, msg, dur) {
       const el = document.getElementById(id);
       document.getElementById(msgId).textContent = msg;
@@ -129,11 +125,6 @@
       return String(raw).split('\n').map(s => s.trim()).filter(Boolean);
     }
 
-    /* ─── Design Request Logic ───
-       Catatan field: Edge Function `design-request-api` (Supabase Postgres)
-       mengembalikan kolom lowercase: id, name, email, department,
-       submitted_at, deadline, file_urls, notes, status, created_at.
-       (Beda dari versi Apps Script lama yang pakai 'Name', 'Date Submit', dst.) */
     let reqData = [];
     let reqActiveIndex = null;
     const countLabel = document.getElementById('countLabel');

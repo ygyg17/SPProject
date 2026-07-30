@@ -1,4 +1,3 @@
-// Load the shared header and apply the page-specific title from body[data-header-title].
 (function () {
   var container = document.getElementById('header-container');
   if (!container) return;

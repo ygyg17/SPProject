@@ -120,9 +120,6 @@
   </div>
 
   <script>
-    // Client Supabase kedua khusus query tabel `links`.
-    // Session login otomatis ke-share dengan client di auth.js karena supabase-js
-    // menyimpan sesi di localStorage per project URL (bukan per instance).
     const sbLink = supabase.createClient(SUPABASE_CONFIG.URL, SUPABASE_CONFIG.ANON_KEY);
 
     const DEFAULT_CATEGORIES = ["General", "Food & Beverage", "Kahyangan Spa", "Others"];
