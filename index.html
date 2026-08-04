@@ -28,78 +28,16 @@
     }
 
     .welcome-visual {
-      width: 148px;
-      height: 104px;
-      margin-bottom: 30px;
-      position: relative;
+      width: 180px;
+      margin: -24px 0 18px;
     }
 
-    .visual-core {
-      position: absolute;
-      left: 43px;
-      top: 30px;
-      width: 62px;
-      height: 48px;
-      border: 2px solid var(--gold);
-      border-radius: 12px;
-      background: var(--surface);
-      box-shadow: 0 10px 24px rgba(186, 143, 46, .11);
+    .welcome-logo {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
     }
-
-    .visual-core::before {
-      content: "";
-      position: absolute;
-      left: 16px;
-      top: 14px;
-      width: 26px;
-      height: 18px;
-      border: 2px solid var(--gold);
-      border-radius: 3px;
-    }
-
-    .visual-core::after {
-      content: "";
-      position: absolute;
-      left: 20px;
-      top: 19px;
-      width: 16px;
-      height: 8px;
-      border-left: 2px solid var(--gold);
-      border-bottom: 2px solid var(--gold);
-      transform: rotate(-45deg);
-    }
-
-    .visual-node {
-      position: absolute;
-      width: 34px;
-      height: 34px;
-      border: 1px solid var(--gold-border);
-      border-radius: 10px;
-      background: var(--gold-dim);
-    }
-
-    .visual-node::after {
-      content: "";
-      position: absolute;
-      inset: 12px;
-      border-radius: 50%;
-      background: var(--gold);
-    }
-
-    .visual-node.one { left: 0; top: 17px; }
-    .visual-node.two { right: 0; top: 0; }
-    .visual-node.three { right: 5px; bottom: 0; }
-
-    .visual-line {
-      position: absolute;
-      height: 1px;
-      background: var(--gold-border);
-      transform-origin: left center;
-    }
-
-    .visual-line.one { width: 28px; left: 30px; top: 38px; }
-    .visual-line.two { width: 28px; left: 96px; top: 31px; transform: rotate(-25deg); }
-    .visual-line.three { width: 28px; left: 96px; top: 70px; transform: rotate(22deg); }
 
     .welcome-kicker {
       margin-bottom: 13px;
@@ -350,7 +288,7 @@
       }
 
       .welcome-panel { padding-left: 0; }
-      .welcome-visual { width: 118px; height: 82px; margin-bottom: 24px; transform: scale(.82); transform-origin: left bottom; }
+      .welcome-visual { width: 150px; margin: -20px 0 16px; }
       .welcome-title { max-width: none; }
       .dashboard-topline { justify-content: flex-start; }
     }
@@ -381,14 +319,8 @@
   <main class="body-wrap single-page">
     <div class="dashboard-shell">
       <section class="welcome-panel" aria-labelledby="greetingTitle">
-        <div class="welcome-visual" aria-hidden="true">
-          <span class="visual-line one"></span>
-          <span class="visual-line two"></span>
-          <span class="visual-line three"></span>
-          <span class="visual-node one"></span>
-          <span class="visual-node two"></span>
-          <span class="visual-node three"></span>
-          <span class="visual-core"></span>
+        <div class="welcome-visual">
+          <img class="welcome-logo" src="images/Logo.png" alt="The Seminyak Beach Resort & Spa">
         </div>
         <p class="welcome-kicker">Marketing Desk</p>
         <h1 class="welcome-title" id="greetingTitle">Good afternoon</h1>
