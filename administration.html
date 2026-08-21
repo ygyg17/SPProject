@@ -574,7 +574,7 @@
       return;
     }
 
-    if (files.length < 2 || files.length > 5) {
+    if (files.length < 1 || files.length > 5) {
       showToast('Please select 2 to 5 images.', false);
       pdfImageInput.value = '';
       return;
@@ -729,7 +729,7 @@
       images: state.pdfImages.slice()
     };
 
-    if (details.images.length < 2 || details.images.length > 5) {
+    if (details.images.length < 1 || details.images.length > 5) {
       submitBtn.disabled = false;
       submitLabel.textContent = 'Download PDF';
       showToast('Please select 2 to 5 images.', false);
