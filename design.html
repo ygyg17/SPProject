@@ -7,6 +7,39 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .req-filter-bar {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+    .req-filter-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: 1px solid var(--line-2);
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .req-filter-pill:hover {
+      border-color: var(--ink);
+      color: var(--ink);
+    }
+    .req-filter-pill.active {
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #fff;
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
@@ -32,6 +65,11 @@
       </div>
 
       <div class="stats-strip" id="reqStatsStrip"></div>
+
+      <div class="req-filter-bar" id="reqFilterBar">
+        <button type="button" class="req-filter-pill active" data-filter="Pending">Pending</button>
+        <button type="button" class="req-filter-pill" data-filter="Done">Done</button>
+      </div>
 
       <div class="board">
         <div class="table-wrapper">
@@ -127,6 +165,7 @@
 
     let reqData = [];
     let reqActiveIndex = null;
+    let reqFilter = 'Pending';
     const countLabel = document.getElementById('countLabel');
 
     function loadDesignRequests() {
@@ -159,7 +198,13 @@
         return;
       }
 
+      if (reqFilter && !reqData.some(r => r.status === reqFilter)) {
+        tbody.innerHTML = '<tr><td colspan="6" class="state-box"><div class="state-icon">◌</div><div class="state-label">Tidak ada request dengan status ' + esc(reqFilter) + '</div></td></tr>';
+        return;
+      }
+
       reqData.forEach((row, idx) => {
+        if (reqFilter && row.status !== reqFilter) return;
         const isPending = row.status === 'Pending';
         const overdue = isPending && new Date(row.deadline) < new Date();
         const tr = document.createElement('tr');
@@ -174,6 +219,16 @@
         tbody.appendChild(tr);
       });
     }
+
+    document.querySelectorAll('.req-filter-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        reqFilter = (reqFilter === btn.dataset.filter) ? null : btn.dataset.filter;
+        document.querySelectorAll('.req-filter-pill').forEach(b => {
+          b.classList.toggle('active', b.dataset.filter === reqFilter);
+        });
+        renderReqTable();
+      });
+    });
 
     const reqModalOverlay = document.getElementById('reqModalOverlay');
     function openReqModal(idx) {
