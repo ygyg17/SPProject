@@ -52,9 +52,7 @@
     .tk-card { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.02); cursor: pointer; outline: none; transition: box-shadow .15s, border-color .15s; }
     .tk-card:hover { border-color: var(--line-2); box-shadow: 0 4px 12px rgba(0,0,0,.05); }
     .tk-card:focus-visible { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
-    .tk-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
-    .tk-accent-amber { background: var(--tk-amber); } .tk-accent-blue { background: var(--tk-blue); } .tk-accent-green { background: var(--tk-green); }
-    .tk-card-inner { padding: 12px 14px 12px 17px; display: flex; flex-direction: column; gap: 8px; }
+    .tk-card-inner { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
     .tk-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
     .tk-card-title { min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.35; word-break: break-word; }
     .tk-card.is-done .tk-card-title { color: var(--muted); text-decoration: line-through; }
@@ -285,7 +283,6 @@
 
     function renderRow(item) {
       const isDone = item.status === 'Done';
-      const tone = COLUMN_META[columnKey(item)].tone;
 
       let meta = '';
       if (item.deadline) meta += '<span class="tk-pill tk-pill-date">' + ICON_CAL + esc(fmtDate(item.deadline)) + '</span>';
@@ -296,7 +293,6 @@
         : '';
 
       return `<article class="tk-card ${isDone ? 'is-done' : ''}" id="row-${item.id}" data-row-id="${item.id}" tabindex="0" role="button">
-        <div class="tk-accent tk-accent-${tone}"></div>
         <div class="tk-card-inner">
           <div class="tk-card-top">
             <h3 class="tk-card-title">${esc(item.taskName || '(untitled task)')}</h3>
