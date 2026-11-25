@@ -39,6 +39,40 @@
       border-color: var(--ink);
       color: #fff;
     }
+
+    /* ── Design progress + log ── */
+    .req-progress-box {
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .req-progress-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .req-progress-row select { flex: 1; min-width: 0; }
+    .req-progress-row .btn-primary {
+      flex: unset; width: auto; margin-top: 0;
+      padding: 10px 16px; font-size: 12px; white-space: nowrap;
+    }
+    .req-log { list-style: none; margin: 10px 0 0; padding: 0; }
+    .req-log li { position: relative; padding: 0 0 14px 22px; }
+    .req-log li:last-child { padding-bottom: 0; }
+    .req-log li::before {
+      content: ''; position: absolute; left: 3px; top: 4px;
+      width: 9px; height: 9px; border-radius: 50%; background: var(--line-2);
+    }
+    .req-log li::after {
+      content: ''; position: absolute; left: 7px; top: 16px; bottom: -2px;
+      width: 1px; background: var(--line);
+    }
+    .req-log li:last-child::after { display: none; }
+    .req-log li.is-current::before { background: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    .req-log-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+    .req-log li:not(.is-current) .req-log-title { font-weight: 500; color: var(--ink-2); }
+    .req-log-meta { margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+    @media (max-width: 480px) {
+      .req-progress-row { flex-direction: column; align-items: stretch; }
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
@@ -76,12 +110,12 @@
           <table class="req-table">
             <thead>
               <tr>
-                <th>Requester</th><th>Dept</th><th>Submitted</th><th>Deadline</th><th>Status</th>
+                <th>Requester</th><th>Dept</th><th>Submitted</th><th>Deadline</th><th>Progress</th><th>Status</th>
                 <th style="text-align:right;">Action</th>
               </tr>
             </thead>
             <tbody id="reqTableBody">
-              <tr><td colspan="6" class="state-box"><div class="state-spinner"></div><div class="state-label">Memuat requests...</div></td></tr>
+              <tr><td colspan="7" class="state-box"><div class="state-spinner"></div><div class="state-label">Memuat requests...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -114,6 +148,15 @@
       <div class="req-field" id="reqModalFilesField" style="margin-top:16px;display:none;">
         <span>Attached Files</span>
         <div class="req-file-list" id="reqModalFileList" style="margin-top:6px;"></div>
+      </div>
+      <div class="req-progress-box">
+        <div class="req-field"><span>Design Progress</span></div>
+        <div class="req-progress-row">
+          <select id="reqProgressSelect"></select>
+          <button type="button" class="btn-primary" id="reqProgressSaveBtn" disabled>Update Progress</button>
+        </div>
+        <div class="req-field" style="margin-top:16px;"><span>Progress Log</span></div>
+        <ul class="req-log" id="reqProgressLog"></ul>
       </div>
       <div class="modal-actions" style="margin-top:24px;border-top:1px solid var(--line);padding-top:20px;align-items:center;">
         <span id="reqModalStatusBadge"></span>
@@ -163,6 +206,53 @@
       return String(raw).split('\n').map(s => s.trim()).filter(Boolean);
     }
 
+    // Harus sama persis dengan PROGRESS_STEPS di edge function (index.ts)
+    const PROGRESS_STEPS = [
+      'Not Started',
+      'In Progress Design',
+      'Submit to Requester',
+      'Approve to Requester',
+      'Submit to GM',
+      'Approve by GM',
+      'File Send to Requester'
+    ];
+    function progressOf(row) {
+      return PROGRESS_STEPS.includes(row.progress) ? row.progress : PROGRESS_STEPS[0];
+    }
+    function progressPill(row) {
+      const p = progressOf(row);
+      const idx = PROGRESS_STEPS.indexOf(p);
+      const cls = idx === 0 ? 'pill-not-started' : (idx === PROGRESS_STEPS.length - 1 ? 'pill-done' : 'pill-in-progress');
+      return `<span class="pill ${cls}">${esc(p)}</span>`;
+    }
+    function fmtDateTime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (isNaN(d)) return iso;
+      return d.toLocaleString('id-ID', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+        timeZone: 'Asia/Makassar'
+      }) + ' WITA';
+    }
+    function renderProgressSection(row) {
+      const current = progressOf(row);
+      const sel = document.getElementById('reqProgressSelect');
+      sel.innerHTML = PROGRESS_STEPS.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+      sel.value = current;
+      sel.disabled = false;
+      document.getElementById('reqProgressSaveBtn').disabled = true;
+
+      // Entri pertama = saat request diajukan; sisanya dari progress_log. Terbaru di atas.
+      const log = Array.isArray(row.progress_log) ? row.progress_log : [];
+      const entries = [{ status: PROGRESS_STEPS[0], at: row.submitted_at || row.created_at, by: '' }, ...log].reverse();
+      document.getElementById('reqProgressLog').innerHTML = entries.map((e, i) => `
+        <li class="${i === 0 ? 'is-current' : ''}">
+          <div class="req-log-title">${esc(e.status)}</div>
+          <div class="req-log-meta">${esc(fmtDateTime(e.at))}${e.by ? ' · ' + esc(e.by) : ''}</div>
+        </li>`).join('');
+    }
+
     let reqData = [];
     let reqActiveIndex = null;
     let reqFilter = 'Pending';
@@ -176,7 +266,7 @@
           reqData = data || [];
           renderReqTable();
         })
-        .catch(() => { tbody.innerHTML='<tr><td colspan="6" class="state-box"><div class="state-icon">!</div><div class="state-label">Gagal terhubung ke database Request.</div></td></tr>'; });
+        .catch(() => { tbody.innerHTML='<tr><td colspan="7" class="state-box"><div class="state-icon">!</div><div class="state-label">Gagal terhubung ke database Request.</div></td></tr>'; });
     }
 
     function renderReqTable() {
@@ -194,12 +284,12 @@
         <div class="stat-pill"><span class="stat-num" style="color:var(--ok);">${done}</span><span class="stat-label">Done</span></div>`;
 
       if(!reqData.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="state-box"><div class="state-icon">◌</div><div class="state-label">Belum ada Design Request</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="state-box"><div class="state-icon">◌</div><div class="state-label">Belum ada Design Request</div></td></tr>';
         return;
       }
 
       if (reqFilter && !reqData.some(r => r.status === reqFilter)) {
-        tbody.innerHTML = '<tr><td colspan="6" class="state-box"><div class="state-icon">◌</div><div class="state-label">Tidak ada request dengan status ' + esc(reqFilter) + '</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="state-box"><div class="state-icon">◌</div><div class="state-label">Tidak ada request dengan status ' + esc(reqFilter) + '</div></td></tr>';
         return;
       }
 
@@ -213,6 +303,7 @@
           <td data-label="Dept">${esc(row.department||'—')}</td>
           <td data-label="Submitted">${fmtDate(row.submitted_at)}</td>
           <td data-label="Deadline" style="${overdue ? 'color:var(--urgent);font-weight:600;' : ''}">${fmtDate(row.deadline)}</td>
+          <td data-label="Progress">${progressPill(row)}</td>
           <td data-label="Status"><span class="pill ${isPending ? 'pill-medium' : 'pill-low'}">${esc(row.status)}</span></td>
           <td data-label="Action" style="text-align:right;"><button class="btn-sm" style="border:1px solid var(--line-2);" onclick="event.stopPropagation();openReqModal(${idx})">Lihat</button></td>`;
         tr.addEventListener('click', () => openReqModal(idx));
@@ -258,6 +349,8 @@
         fileListEl.innerHTML = '';
       }
 
+      renderProgressSection(row);
+
       document.getElementById('reqModalDoneBtn').style.display = isPending ? 'inline-block' : 'none';
       reqModalOverlay.classList.add('show');
     }
@@ -281,6 +374,42 @@
         })
         .catch(() => showErr('Gagal mengupdate request'))
         .finally(() => { btn.disabled = false; btn.textContent = 'Mark as Done'; });
+    });
+
+    document.getElementById('reqProgressSelect').addEventListener('change', () => {
+      const row = reqData[reqActiveIndex];
+      if (!row) return;
+      document.getElementById('reqProgressSaveBtn').disabled =
+        document.getElementById('reqProgressSelect').value === progressOf(row);
+    });
+
+    document.getElementById('reqProgressSaveBtn').addEventListener('click', () => {
+      if (reqActiveIndex === null) return;
+      const row = reqData[reqActiveIndex];
+      if (!row) return;
+      const sel = document.getElementById('reqProgressSelect');
+      const btn = document.getElementById('reqProgressSaveBtn');
+      const next = sel.value;
+      if (next === progressOf(row)) return;
+
+      btn.disabled = true; sel.disabled = true; btn.textContent = 'Menyimpan...';
+      SeminyakAuth.authFetch(`${REQ_API_URL}?action=updateProgress&id=${encodeURIComponent(row.id)}&progress=${encodeURIComponent(next)}`)
+        .then(data => {
+          if (data && data.authError) throw new Error(data.error || 'Auth error');
+          if (!data || data.status !== 'success') throw new Error((data && data.message) || 'Gagal');
+          row.progress = data.progress;
+          row.progress_log = data.progress_log;
+          if (data.requestStatus) row.status = data.requestStatus;
+          renderReqTable();
+          openReqModal(reqActiveIndex);
+          showOk('Progress diperbarui: ' + data.progress);
+        })
+        .catch(() => showErr('Gagal mengupdate progress'))
+        .finally(() => {
+          sel.disabled = false;
+          btn.textContent = 'Update Progress';
+          btn.disabled = (sel.value === progressOf(row));
+        });
     });
 
     const confirmOverlay = document.getElementById('confirmOverlay');
