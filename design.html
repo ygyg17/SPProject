@@ -40,6 +40,15 @@
       color: #fff;
     }
 
+    .req-no {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      color: var(--gold-hover);
+      margin-bottom: 3px;
+    }
+
     /* ── Design progress + log ── */
     .req-progress-box {
       margin-top: 16px;
@@ -200,6 +209,11 @@
       if (isNaN(d)) return iso;
       return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
     }
+    // Harus sama dengan formatRequestNo di edge function: 7 -> "DR-0007"
+    function reqNo(row) {
+      const n = Number(row && row.request_no);
+      return Number.isFinite(n) && n > 0 ? 'DR-' + String(n).padStart(4, '0') : '';
+    }
     function getFileUrls(row) {
       const raw = row.file_urls;
       if (!raw) return [];
@@ -299,7 +313,7 @@
         const overdue = isPending && new Date(row.deadline) < new Date();
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td data-label="Requester"><div style="font-weight:600;color:var(--ink);margin-bottom:2px;">${esc(row.name||'—')}</div><div style="font-size:11px;color:var(--muted);">${esc(row.email||'')}</div></td>
+          <td data-label="Requester">${reqNo(row) ? `<div class="req-no">${esc(reqNo(row))}</div>` : ''}<div style="font-weight:600;color:var(--ink);margin-bottom:2px;">${esc(row.name||'—')}</div><div style="font-size:11px;color:var(--muted);">${esc(row.email||'')}</div></td>
           <td data-label="Dept">${esc(row.department||'—')}</td>
           <td data-label="Submitted">${fmtDate(row.submitted_at)}</td>
           <td data-label="Deadline" style="${overdue ? 'color:var(--urgent);font-weight:600;' : ''}">${fmtDate(row.deadline)}</td>
@@ -329,7 +343,7 @@
       const isPending = row.status === 'Pending';
 
       document.getElementById('reqModalName').textContent = row.name || '—';
-      document.getElementById('reqModalMeta').textContent = `${row.department||'—'} · Diajukan ${fmtDate(row.submitted_at)}`;
+      document.getElementById('reqModalMeta').textContent = `${reqNo(row) ? reqNo(row) + ' · ' : ''}${row.department||'—'} · Diajukan ${fmtDate(row.submitted_at)}`;
       document.getElementById('reqModalEmail').textContent = row.email || '—';
       document.getElementById('reqModalDept').textContent = row.department || '—';
       document.getElementById('reqModalSub').textContent = fmtDate(row.submitted_at);
