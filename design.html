@@ -220,16 +220,26 @@
       return String(raw).split('\n').map(s => s.trim()).filter(Boolean);
     }
 
-    // Harus sama persis dengan PROGRESS_STEPS di edge function (index.ts)
-    const PROGRESS_STEPS = [
-      'Not Started',
-      'In Progress Design',
-      'Submit to Requester',
-      'Approve to Requester',
-      'Submit to GM',
-      'Approve by GM',
-      'File Send to Requester'
+    // Pengelompokan hanya untuk tampilan dropdown. Teks tiap tahap & urutannya harus
+    // sama persis dengan PROGRESS_STEPS di edge function (index.ts).
+    const PROGRESS_GROUPS = [
+      { label: 'Design', steps: ['Design Submit', 'In Progress Design'] },
+      { label: 'Review User', steps: [
+        'Submit to Requester',
+        'Rev 1 - User', 'Submit Rev 1 - User',
+        'Rev 2 - User', 'Submit Rev 2 - User',
+        'Rev 3 - User', 'Submit Rev 3 - User',
+        'Approve User'
+      ] },
+      { label: 'Review GM', steps: [
+        'Submit to GM',
+        'Rev 1 - GM', 'Submit Rev 1 - GM',
+        'Rev 2 - GM', 'Submit Rev 2 - GM',
+        'Rev 3 - GM', 'Submit Rev 3 - GM'
+      ] },
+      { label: 'Finalisasi', steps: ['Printing Sample', 'Approve by GM', 'File Send to Requester'] }
     ];
+    const PROGRESS_STEPS = PROGRESS_GROUPS.flatMap(g => g.steps);
     function progressOf(row) {
       return PROGRESS_STEPS.includes(row.progress) ? row.progress : PROGRESS_STEPS[0];
     }
@@ -252,7 +262,9 @@
     function renderProgressSection(row) {
       const current = progressOf(row);
       const sel = document.getElementById('reqProgressSelect');
-      sel.innerHTML = PROGRESS_STEPS.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+      sel.innerHTML = PROGRESS_GROUPS.map(g =>
+        `<optgroup label="${esc(g.label)}">${g.steps.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('')}</optgroup>`
+      ).join('');
       sel.value = current;
       sel.disabled = false;
       document.getElementById('reqProgressSaveBtn').disabled = true;
